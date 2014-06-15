@@ -33,39 +33,32 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 
 Module Type TypElt.
- Parameter t : Type -> Type.
- Parameter key : Type.
+ Parameters t elt : Type.
 End TypElt.
 
 Module Type HasWOps (Import T:TypElt).
 
-  Section Foo.
-  Variable  A : Type.
-
-  Parameter empty : t A.
+  Parameter empty : t.
   (** The empty set. *)
 
-  Parameter is_empty : t A -> bool.
+  Parameter is_empty : t -> bool.
   (** Test whether a set is empty or not. *)
 
-  Parameter mem : key -> t A -> bool.
+  Parameter mem : elt -> t -> bool.
   (** [mem x s] tests whether [x] belongs to the set [s]. *)
 
-  Parameter add : key -> A -> t A -> t A.
+  Parameter add : elt -> t -> t.
   (** [add x s] returns a set containing all elements of [s],
   plus [x]. If [x] was already in [s], [s] is returned unchanged. *)
 
-  Parameter singleton : key -> A -> t A.
+  Parameter singleton : elt -> t.
   (** [singleton x] returns the one-element set containing only [x]. *)
 
-  Parameter remove : key -> t A -> t A.
+  Parameter remove : elt -> t -> t.
   (** [remove x s] returns a set containing all elements of [s],
   except [x]. If [x] was not in [s], [s] is returned unchanged. *)
 
-  (*
-  TODO: Does not exist in FSet, OCaml has merge. What to do?
-
-  Parameter union : t A -> t A -> t A.
+  Parameter union : t -> t -> t.
   (** Set union. *)
 
   Parameter inter : t -> t -> t.
@@ -73,57 +66,55 @@ Module Type HasWOps (Import T:TypElt).
 
   Parameter diff : t -> t -> t.
   (** Set difference. *)
-  *)
 
-  Parameter equal : (A -> A -> bool) -> t A -> t A -> bool.
+  Parameter equal : t -> t -> bool.
   (** [equal s1 s2] tests whether the sets [s1] and [s2] are
   equal, that is, contain equal elements. *)
 
-  Parameter subset : (A -> A -> bool) -> t A -> t A -> bool.
+  Parameter subset : t -> t -> bool.
   (** [subset s1 s2] tests whether the set [s1] is a subset of
   the set [s2]. *)
 
-  Parameter fold : forall X : Type, (key -> A -> X -> X) -> t A -> X -> X.
+  Parameter fold : forall A : Type, (elt -> A -> A) -> t -> A -> A.
   (** [fold f s a] computes [(f xN ... (f x2 (f x1 a))...)],
   where [x1 ... xN] are the elements of [s].
   The order in which elements of [s] are presented to [f] is
   unspecified. *)
 
-  Parameter for_all : (key -> A -> bool) -> t A -> bool.
+  Parameter for_all : (elt -> bool) -> t -> bool.
   (** [for_all p s] checks if all elements of the set
   satisfy the predicate [p]. *)
 
-  Parameter exists_ : (key -> A -> bool) -> t A -> bool.
+  Parameter exists_ : (elt -> bool) -> t -> bool.
   (** [exists p s] checks if at least one element of
   the set satisfies the predicate [p]. *)
 
-  Parameter filter : (key -> A -> bool) -> t A -> t A.
+  Parameter filter : (elt -> bool) -> t -> t.
   (** [filter p s] returns the set of all elements in [s]
   that satisfy predicate [p]. *)
 
-  Parameter partition : (key -> A -> bool) -> t A -> t A * t A.
+  Parameter partition : (elt -> bool) -> t -> t * t.
   (** [partition p s] returns a pair of sets [(s1, s2)], where
   [s1] is the set of all the elements of [s] that satisfy the
   predicate [p], and [s2] is the set of all the elements of
   [s] that do not satisfy [p]. *)
 
-  Parameter cardinal : t A -> nat.
+  Parameter cardinal : t -> nat.
   (** Return the number of elements of a set. *)
 
-  Parameter elements : t A -> list (key * A).
+  Parameter elements : t -> list elt.
   (** Return the list of all elements of the given set, in any order. *)
 
-  Parameter choose : t A -> option (key * A).
+  Parameter choose : t -> option elt.
   (** Return one element of the given set, or [None] if
   the set is empty. Which element is chosen is unspecified.
   Equal sets could return different elements. *)
-  End Foo.
+
 End HasWOps.
 
-
 Module Type WOps (E : DecidableType).
-  Definition key := E.t.
-  Parameter t : Type -> Type. (** the abstract type of sets *)
+  Definition elt := E.t.
+  Parameter t : Type. (** the abstract type of sets *)
   Include HasWOps.
 End WOps.
 
@@ -133,74 +124,51 @@ End WOps.
     Weak sets are sets without ordering on base elements, only
     a decidable equality. *)
 
-Module Type WMapsOn (E : DecidableType).
+Module Type WSetsOn (E : DecidableType).
   (** First, we ask for all the functions *)
   Include WOps E.
 
-  Section Foo.
-  Variable A : Type.
-
   (** Logical predicates *)
-  Parameter In : key -> t A -> Prop.
-  Parameter MapsTo : key -> A -> t A -> Prop.
-  (* TODO: *Shrug* *)
+  Parameter In : elt -> t -> Prop.
   Declare Instance In_compat : Proper (E.eq==>eq==>iff) In.
 
-  Definition Equal s s' := forall (k : key) (a : A), MapsTo k a s <-> MapsTo k a s'.
-  Definition Subset s s' := forall (k : key) (a : A), MapsTo k a s -> MapsTo k a s'.
-  Definition Empty s := forall k a, ~ MapsTo k a s.
-  Definition For_all (P : key -> A -> Prop) s := forall k a, MapsTo k a s -> P k a.
-  Definition Exists (P : key -> A -> Prop) s := exists k a, MapsTo k a s /\ P k a.
+  Definition Equal s s' := forall a : elt, In a s <-> In a s'.
+  Definition Subset s s' := forall a : elt, In a s -> In a s'.
+  Definition Empty s := forall a : elt, ~ In a s.
+  Definition For_all (P : elt -> Prop) s := forall x, In x s -> P x.
+  Definition Exists (P : elt -> Prop) s := exists x, In x s /\ P x.
 
   Notation "s  [=]  t" := (Equal s t) (at level 70, no associativity).
   Notation "s  [<=]  t" := (Subset s t) (at level 70, no associativity).
 
-  Definition eq : t A -> t A -> Prop := Equal.
- 
-  (*
+  Definition eq : t -> t -> Prop := Equal.
   Include IsEq. (** [eq] is obviously an equivalence, for subtyping only *)
   Include HasEqDec.
-  *)
 
   (** Specifications of set operators *)
 
   Section Spec.
-
-  Variable s s': t A.
-  Variable k k' : key.
-  Variable v v' : A.
-  Variable f : key -> bool.
+  Variable s s': t.
+  Variable x y : elt.
+  Variable f : elt -> bool.
   Notation compatb := (Proper (E.eq==>Logic.eq)) (only parsing).
 
-  Parameter unique: MapsTo k v s -> MapsTo k v' s -> v = v'.
-
-  Parameter mem_spec : mem k s = true <-> In k s.
-  (* TODO: Do we need Equiv here
+  Parameter mem_spec : mem x s = true <-> In x s.
   Parameter equal_spec : equal s s' = true <-> s[=]s'.
   Parameter subset_spec : subset s s' = true <-> s[<=]s'.
-  *)
-  Parameter empty_spec : Empty (empty A).
+  Parameter empty_spec : Empty empty.
   Parameter is_empty_spec : is_empty s = true <-> Empty s.
-  (* Parameter add_spec : In k1 (add k2 v s) <-> E.eq y x \/ In y s. *)
-  Parameter add_spec1: E.eq k k' -> MapsTo k v (add k' v s).
-  Parameter add_spec2: ~ E.eq k k' -> (MapsTo k v (add k' v' s) <-> MapsTo k v s).
-
-  Parameter remove_spec1: E.eq k k' -> ~ In k (remove k' s).
-  Parameter remove_spec2: ~ E.eq k k' -> MapsTo k' v (remove k s) <-> MapsTo k' v s.
-
-  Parameter singleton_spec: E.eq k k' <-> MapsTo k v (singleton k' v).
-
-  (*
+  Parameter add_spec : In y (add x s) <-> E.eq y x \/ In y s.
+  Parameter remove_spec : In y (remove x s) <-> In y s /\ ~E.eq y x.
+  Parameter singleton_spec : In y (singleton x) <-> E.eq y x.
   Parameter union_spec : In x (union s s') <-> In x s \/ In x s'.
   Parameter inter_spec : In x (inter s s') <-> In x s /\ In x s'.
   Parameter diff_spec : In x (diff s s') <-> In x s /\ ~In x s'.
-  *)
-
-  Parameter fold_spec : forall (X : Type) (i : X) (f : key -> A -> X -> X),
-    fold f s i = fold_left (fun a p => f (fst p) (snd p) a ) (elements s) i.
+  Parameter fold_spec : forall (A : Type) (i : A) (f : elt -> A -> A),
+    fold f s i = fold_left (flip f) (elements s) i.
   Parameter cardinal_spec : cardinal s = length (elements s).
   Parameter filter_spec : compatb f ->
-    (MapsTo k v (filter f s) <-> MapsTo k v s /\ f k v = true).
+    (In x (filter f s) <-> In x s /\ f x = true).
   Parameter for_all_spec : compatb f ->
     (for_all f s = true <-> For_all (fun x => f x = true) s).
   Parameter exists_spec : compatb f ->
@@ -232,22 +200,22 @@ End WSets.
 
 (** ** Functorial signature for sets on ordered elements
 
-    Based on [WSetsOn], plus ordering on sets and [min_key] and [max_key]
+    Based on [WSetsOn], plus ordering on sets and [min_elt] and [max_elt]
     and some stronger specifications for other functions. *)
 
-Module Type HasOrdOps (Import T:TypKey).
+Module Type HasOrdOps (Import T:TypElt).
 
   Parameter compare : t -> t -> comparison.
   (** Total ordering between sets. Can be used as the ordering function
   for doing sets of sets. *)
 
-  Parameter min_key : t -> option key.
+  Parameter min_elt : t -> option elt.
   (** Return the smallest element of the given set
   (with respect to the [E.compare] ordering),
   or [None] if the set is empty. *)
 
-  Parameter max_key : t -> option key.
-  (** Same as [min_key], but returns the largest element of the
+  Parameter max_elt : t -> option elt.
+  (** Same as [min_elt], but returns the largest element of the
   given set. *)
 
 End HasOrdOps.
@@ -260,7 +228,7 @@ Module Type SetsOn (E : OrderedType).
 
   Section Spec.
   Variable s s': t.
-  Variable x y : key.
+  Variable x y : elt.
 
   Parameter compare_spec : CompSpec eq lt s s' (compare s s').
 
@@ -272,13 +240,13 @@ Module Type SetsOn (E : OrderedType).
    which can now be proved to receive elements in increasing order.
   *)
 
-  Parameter min_key_spec1 : min_key s = Some x -> In x s.
-  Parameter min_key_spec2 : min_key s = Some x -> In y s -> ~ E.lt y x.
-  Parameter min_key_spec3 : min_key s = None -> Empty s.
+  Parameter min_elt_spec1 : min_elt s = Some x -> In x s.
+  Parameter min_elt_spec2 : min_elt s = Some x -> In y s -> ~ E.lt y x.
+  Parameter min_elt_spec3 : min_elt s = None -> Empty s.
 
-  Parameter max_key_spec1 : max_key s = Some x -> In x s.
-  Parameter max_key_spec2 : max_key s = Some x -> In y s -> ~ E.lt x y.
-  Parameter max_key_spec3 : max_key s = None -> Empty s.
+  Parameter max_elt_spec1 : max_elt s = Some x -> In x s.
+  Parameter max_elt_spec2 : max_elt s = Some x -> In y s -> ~ E.lt x y.
+  Parameter max_elt_spec3 : max_elt s = None -> Empty s.
 
   (** Additional specification of [choose] *)
   Parameter choose_spec3 : choose s = Some x -> choose s' = Some y ->
@@ -380,14 +348,14 @@ Module Type WRawSets (E : DecidableType).
   Declare Instance isok_Ok s `(isok s = true) : Ok s | 10.
 
   (** Logical predicates *)
-  Parameter In : key -> t -> Prop.
+  Parameter In : elt -> t -> Prop.
   Declare Instance In_compat : Proper (E.eq==>eq==>iff) In.
 
-  Definition Equal s s' := forall a : key, In a s <-> In a s'.
-  Definition Subset s s' := forall a : key, In a s -> In a s'.
-  Definition Empty s := forall a : key, ~ In a s.
-  Definition For_all (P : key -> Prop) s := forall x, In x s -> P x.
-  Definition Exists (P : key -> Prop) s := exists x, In x s /\ P x.
+  Definition Equal s s' := forall a : elt, In a s <-> In a s'.
+  Definition Subset s s' := forall a : elt, In a s -> In a s'.
+  Definition Empty s := forall a : elt, ~ In a s.
+  Definition For_all (P : elt -> Prop) s := forall x, In x s -> P x.
+  Definition Exists (P : elt -> Prop) s := exists x, In x s /\ P x.
 
   Notation "s  [=]  t" := (Equal s t) (at level 70, no associativity).
   Notation "s  [<=]  t" := (Subset s t) (at level 70, no associativity).
@@ -412,8 +380,8 @@ Module Type WRawSets (E : DecidableType).
 
   Section Spec.
   Variable s s': t.
-  Variable x y : key.
-  Variable f : key -> bool.
+  Variable x y : elt.
+  Variable f : elt -> bool.
   Notation compatb := (Proper (E.eq==>Logic.eq)) (only parsing).
 
   Parameter mem_spec : forall `{Ok s}, mem x s = true <-> In x s.
@@ -434,7 +402,7 @@ Module Type WRawSets (E : DecidableType).
     In x (inter s s') <-> In x s /\ In x s'.
   Parameter diff_spec : forall `{Ok s, Ok s'},
     In x (diff s s') <-> In x s /\ ~In x s'.
-  Parameter fold_spec : forall (A : Type) (i : A) (f : key -> A -> A),
+  Parameter fold_spec : forall (A : Type) (i : A) (f : elt -> A -> A),
     fold f s i = fold_left (flip f) (elements s) i.
   Parameter cardinal_spec : forall `{Ok s},
     cardinal s = length (elements s).
@@ -464,24 +432,24 @@ Module WRaw2SetsOn (E:DecidableType)(M:WRawSets E) <: WSetsOn E.
  (** We avoid creating induction principles for the Record *)
  Local Unset Elimination Schemes.
 
- Definition key := E.t.
+ Definition elt := E.t.
 
  Record t_ := Mkt {this :> M.t; is_ok : M.Ok this}.
  Definition t := t_.
  Arguments Mkt this {is_ok}.
  Hint Resolve is_ok : typeclass_instances.
 
- Definition In (x : key)(s : t) := M.In x s.(this).
- Definition Equal (s s' : t) := forall a : key, In a s <-> In a s'.
- Definition Subset (s s' : t) := forall a : key, In a s -> In a s'.
- Definition Empty (s : t) := forall a : key, ~ In a s.
- Definition For_all (P : key -> Prop)(s : t) := forall x, In x s -> P x.
- Definition Exists (P : key -> Prop)(s : t) := exists x, In x s /\ P x.
+ Definition In (x : elt)(s : t) := M.In x s.(this).
+ Definition Equal (s s' : t) := forall a : elt, In a s <-> In a s'.
+ Definition Subset (s s' : t) := forall a : elt, In a s -> In a s'.
+ Definition Empty (s : t) := forall a : elt, ~ In a s.
+ Definition For_all (P : elt -> Prop)(s : t) := forall x, In x s -> P x.
+ Definition Exists (P : elt -> Prop)(s : t) := exists x, In x s /\ P x.
 
- Definition mem (x : key)(s : t) := M.mem x s.
- Definition add (x : key)(s : t) : t := Mkt (M.add x s).
- Definition remove (x : key)(s : t) : t := Mkt (M.remove x s).
- Definition singleton (x : key) : t := Mkt (M.singleton x).
+ Definition mem (x : elt)(s : t) := M.mem x s.
+ Definition add (x : elt)(s : t) : t := Mkt (M.add x s).
+ Definition remove (x : elt)(s : t) : t := Mkt (M.remove x s).
+ Definition singleton (x : elt) : t := Mkt (M.singleton x).
  Definition union (s s' : t) : t := Mkt (M.union s s').
  Definition inter (s s' : t) : t := Mkt (M.inter s s').
  Definition diff (s s' : t) : t := Mkt (M.diff s s').
@@ -489,14 +457,14 @@ Module WRaw2SetsOn (E:DecidableType)(M:WRawSets E) <: WSetsOn E.
  Definition subset (s s' : t) := M.subset s s'.
  Definition empty : t := Mkt M.empty.
  Definition is_empty (s : t) := M.is_empty s.
- Definition elements (s : t) : list key := M.elements s.
- Definition choose (s : t) : option key := M.choose s.
- Definition fold (A : Type)(f : key -> A -> A)(s : t) : A -> A := M.fold f s.
+ Definition elements (s : t) : list elt := M.elements s.
+ Definition choose (s : t) : option elt := M.choose s.
+ Definition fold (A : Type)(f : elt -> A -> A)(s : t) : A -> A := M.fold f s.
  Definition cardinal (s : t) := M.cardinal s.
- Definition filter (f : key -> bool)(s : t) : t := Mkt (M.filter f s).
- Definition for_all (f : key -> bool)(s : t) := M.for_all f s.
- Definition exists_ (f : key -> bool)(s : t) := M.exists_ f s.
- Definition partition (f : key -> bool)(s : t) : t * t :=
+ Definition filter (f : elt -> bool)(s : t) : t := Mkt (M.filter f s).
+ Definition for_all (f : elt -> bool)(s : t) := M.for_all f s.
+ Definition exists_ (f : elt -> bool)(s : t) := M.exists_ f s.
+ Definition partition (f : elt -> bool)(s : t) : t * t :=
    let p := M.partition f s in (Mkt (fst p), Mkt (snd p)).
 
  Instance In_compat : Proper (E.eq==>eq==>iff) In.
@@ -518,8 +486,8 @@ Module WRaw2SetsOn (E:DecidableType)(M:WRawSets E) <: WSetsOn E.
 
  Section Spec.
   Variable s s' : t.
-  Variable x y : key.
-  Variable f : key -> bool.
+  Variable x y : elt.
+  Variable f : elt -> bool.
   Notation compatb := (Proper (E.eq==>Logic.eq)) (only parsing).
 
   Lemma mem_spec : mem x s = true <-> In x s.
@@ -544,7 +512,7 @@ Module WRaw2SetsOn (E:DecidableType)(M:WRawSets E) <: WSetsOn E.
   Proof. exact (@M.inter_spec _ _ _ _ _). Qed.
   Lemma diff_spec : In x (diff s s') <-> In x s /\ ~In x s'.
   Proof. exact (@M.diff_spec _ _ _ _ _). Qed.
-  Lemma fold_spec : forall (A : Type) (i : A) (f : key -> A -> A),
+  Lemma fold_spec : forall (A : Type) (i : A) (f : elt -> A -> A),
       fold f s i = fold_left (fun a e => f e a) (elements s) i.
   Proof. exact (@M.fold_spec _). Qed.
   Lemma cardinal_spec : cardinal s = length (elements s).
@@ -588,7 +556,7 @@ Module Type RawSets (E : OrderedType).
 
   Section Spec.
   Variable s s': t.
-  Variable x y : key.
+  Variable x y : elt.
 
   (** Specification of [compare] *)
   Parameter compare_spec : forall `{Ok s, Ok s'}, CompSpec eq lt s s' (compare s s').
@@ -596,15 +564,15 @@ Module Type RawSets (E : OrderedType).
   (** Additional specification of [elements] *)
   Parameter elements_spec2 : forall `{Ok s}, sort E.lt (elements s).
 
-  (** Specification of [min_key] *)
-  Parameter min_key_spec1 : min_key s = Some x -> In x s.
-  Parameter min_key_spec2 : forall `{Ok s}, min_key s = Some x -> In y s -> ~ E.lt y x.
-  Parameter min_key_spec3 : min_key s = None -> Empty s.
+  (** Specification of [min_elt] *)
+  Parameter min_elt_spec1 : min_elt s = Some x -> In x s.
+  Parameter min_elt_spec2 : forall `{Ok s}, min_elt s = Some x -> In y s -> ~ E.lt y x.
+  Parameter min_elt_spec3 : min_elt s = None -> Empty s.
 
-  (** Specification of [max_key] *)
-  Parameter max_key_spec1 : max_key s = Some x -> In x s.
-  Parameter max_key_spec2 : forall `{Ok s}, max_key s = Some x -> In y s -> ~ E.lt x y.
-  Parameter max_key_spec3 : max_key s = None -> Empty s.
+  (** Specification of [max_elt] *)
+  Parameter max_elt_spec1 : max_elt s = Some x -> In x s.
+  Parameter max_elt_spec2 : forall `{Ok s}, max_elt s = Some x -> In y s -> ~ E.lt x y.
+  Parameter max_elt_spec3 : max_elt s = None -> Empty s.
 
   (** Additional specification of [choose] *)
   Parameter choose_spec3 : forall `{Ok s, Ok s'},
@@ -620,8 +588,8 @@ Module Raw2SetsOn (O:OrderedType)(M:RawSets O) <: SetsOn O.
   Include WRaw2SetsOn O M.
 
   Definition compare (s s':t) := M.compare s s'.
-  Definition min_key (s:t) : option key := M.min_key s.
-  Definition max_key (s:t) : option key := M.max_key s.
+  Definition min_elt (s:t) : option elt := M.min_elt s.
+  Definition max_elt (s:t) : option elt := M.max_elt s.
   Definition lt (s s':t) := M.lt s s'.
 
   (** Specification of [lt] *)
@@ -642,7 +610,7 @@ Module Raw2SetsOn (O:OrderedType)(M:RawSets O) <: SetsOn O.
 
   Section Spec.
   Variable s s' s'' : t.
-  Variable x y : key.
+  Variable x y : elt.
 
   Lemma compare_spec : CompSpec eq lt s s' (compare s s').
   Proof. unfold compare; destruct (@M.compare_spec s s' _ _); auto. Qed.
@@ -651,21 +619,21 @@ Module Raw2SetsOn (O:OrderedType)(M:RawSets O) <: SetsOn O.
   Lemma elements_spec2 : sort O.lt (elements s).
   Proof. exact (@M.elements_spec2 _ _). Qed.
 
-  (** Specification of [min_key] *)
-  Lemma min_key_spec1 : min_key s = Some x -> In x s.
-  Proof. exact (@M.min_key_spec1 _ _). Qed.
-  Lemma min_key_spec2 : min_key s = Some x -> In y s -> ~ O.lt y x.
-  Proof. exact (@M.min_key_spec2 _ _ _ _). Qed.
-  Lemma min_key_spec3 : min_key s = None -> Empty s.
-  Proof. exact (@M.min_key_spec3 _). Qed.
+  (** Specification of [min_elt] *)
+  Lemma min_elt_spec1 : min_elt s = Some x -> In x s.
+  Proof. exact (@M.min_elt_spec1 _ _). Qed.
+  Lemma min_elt_spec2 : min_elt s = Some x -> In y s -> ~ O.lt y x.
+  Proof. exact (@M.min_elt_spec2 _ _ _ _). Qed.
+  Lemma min_elt_spec3 : min_elt s = None -> Empty s.
+  Proof. exact (@M.min_elt_spec3 _). Qed.
 
-  (** Specification of [max_key] *)
-  Lemma max_key_spec1 : max_key s = Some x -> In x s.
-  Proof. exact (@M.max_key_spec1 _ _). Qed.
-  Lemma max_key_spec2 : max_key s = Some x -> In y s -> ~ O.lt x y.
-  Proof. exact (@M.max_key_spec2 _ _ _ _). Qed.
-  Lemma max_key_spec3 : max_key s = None -> Empty s.
-  Proof. exact (@M.max_key_spec3 _). Qed.
+  (** Specification of [max_elt] *)
+  Lemma max_elt_spec1 : max_elt s = Some x -> In x s.
+  Proof. exact (@M.max_elt_spec1 _ _). Qed.
+  Lemma max_elt_spec2 : max_elt s = Some x -> In y s -> ~ O.lt x y.
+  Proof. exact (@M.max_elt_spec2 _ _ _ _). Qed.
+  Lemma max_elt_spec3 : max_elt s = None -> Empty s.
+  Proof. exact (@M.max_elt_spec3 _). Qed.
 
   (** Additional specification of [choose] *)
   Lemma choose_spec3 :

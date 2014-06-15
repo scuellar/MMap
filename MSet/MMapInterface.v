@@ -379,6 +379,8 @@ Module WS_WSfun (M' : WMaps) <: WMapsOn M'.E := M'.
 
 *)
 
+(*
+TODO: This seems to be tedious work below.
 
 Module Type WRawSets (E : DecidableType).
   (** First, we ask for all the functions *)
@@ -987,3 +989,5 @@ Module MakeListOrdering (O:OrderedType).
  Hint Resolve cons_CompSpec.
 
 End MakeListOrdering.
+
+*)

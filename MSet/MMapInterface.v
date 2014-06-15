@@ -6,25 +6,10 @@
 (*         *       GNU Lesser General Public License Version 2.1       *)
 (***********************************************************************)
 
-(** * Finite set library *)
+(** * Finite map library *)
 
-(** Set interfaces, inspired by the one of Ocaml. When compared with
-    Ocaml, the main differences are:
-    - the lack of [iter] function, useless since Coq is purely functional
-    - the use of [option] types instead of [Not_found] exceptions
-    - the use of [nat] instead of [int] for the [cardinal] function
-
-    Several variants of the set interfaces are available:
-    - [WSetsOn] : functorial signature for weak sets
-    - [WSets]   : self-contained version of [WSets]
-    - [SetsOn]  : functorial signature for ordered sets
-    - [Sets]    : self-contained version of [Sets]
-    - [WRawSets] : a signature for weak sets that may be ill-formed
-    - [RawSets]  : same for ordered sets
-
-    If unsure, [S = Sets] is probably what you're looking for: most other
-    signatures are subsets of it, while [Sets] can be obtained from
-    [RawSets] via the use of a subset type (see (W)Raw2Sets below).
+(** Map interfaces, inspired by the previous finite map implementaiton in FMap,
+    as well as the improved finite set interfaces in MSet.
 *)
 
 
@@ -45,26 +30,28 @@ Module Type HasWOps (Import T:TypElt).
   Variable  A : Type.
 
   Parameter empty : t A.
-  (** The empty set. *)
+  (** The empty map. *)
 
   Parameter is_empty : t A -> bool.
-  (** Test whether a set is empty or not. *)
+  (** Test whether a map is empty or not. *)
 
   Parameter mem : key -> t A -> bool.
-  (** [mem x s] tests whether [x] belongs to the set [s]. *)
+  (** [mem k s] tests whether [k] belongs to the map [s]. *)
  
   Parameter find : key -> t A -> option A.
 
   Parameter add : key -> A -> t A -> t A.
-  (** [add x s] returns a set containing all elements of [s],
-  plus [x]. If [x] was already in [s], [s] is returned unchanged. *)
+  (** [add k m] returns a map containing all elements of [m],
+  plus one mapping [k] to [v]. If [k] was already in [m], then its value
+  is replaced by [v]. *)
 
   Parameter singleton : key -> A -> t A.
-  (** [singleton x] returns the one-element set containing only [x]. *)
+  (** [singleton k v] returns the one-element map containing only the key [k]
+  that maps to [v]. *)
 
   Parameter remove : key -> t A -> t A.
-  (** [remove x s] returns a set containing all elements of [s],
-  except [x]. If [x] was not in [s], [s] is returned unchanged. *)
+  (** [remove k m] returns a map containing all elements of [m],
+  except [k]. If [k] was not in [m], [m] is returned unchanged. *)
 
   (*
   TODO: Does not exist in FSet, OCaml has merge. What to do?
@@ -80,61 +67,65 @@ Module Type HasWOps (Import T:TypElt).
   *)
 
   Parameter equal : (A -> A -> bool) -> t A -> t A -> bool.
-  (** [equal s1 s2] tests whether the sets [s1] and [s2] are
-  equal, that is, contain equal elements. *)
+  (** [equal val_eq m1 m2] tests whether the maps [m1] and [m2] are
+  equal, that is, contains the same keys, and values [v1] in [m1]
+  and [v2] in [m2] for a common key [k] must be equal according to
+  [val_eq]. *)
 
   Parameter subset : (A -> A -> bool) -> t A -> t A -> bool.
-  (** [subset s1 s2] tests whether the set [s1] is a subset of
-  the set [s2]. *)
+  (** [subset val_eq m1 m2] tests whether the map [m1] is a subset of
+  the map [m2], where the values [v1] and [v2] for a common key [k]
+  must be equal according to [val_eq]. *)
 
   Parameter fold : forall X : Type, (key -> A -> X -> X) -> t A -> X -> X.
-  (** [fold f s a] computes [(f xN ... (f x2 (f x1 a))...)],
-  where [x1 ... xN] are the elements of [s].
-  The order in which elements of [s] are presented to [f] is
+  (** [fold f m a] computes [(f kN vN ... (f k2 v2 (f k1 v1 a))...)],
+  where [k1 ... kN] are the keys, and [v1 ... vN] the corresponding values
+  of [m]. The order in which elements of [m] are presented to [f] is
   unspecified. *)
 
   Parameter for_all : (key -> A -> bool) -> t A -> bool.
-  (** [for_all p s] checks if all elements of the set
+  (** [for_all p m] checks if all elements of the map [m]
   satisfy the predicate [p]. *)
 
   Parameter exists_ : (key -> A -> bool) -> t A -> bool.
-  (** [exists p s] checks if at least one element of
-  the set satisfies the predicate [p]. *)
+  (** [exists p m] checks if at least one element of
+  the map [m] satisfies the predicate [p]. *)
 
   Parameter filter : (key -> A -> bool) -> t A -> t A.
-  (** [filter p s] returns the set of all elements in [s]
+  (** [filter p m] returns the map of all elements in [m]
   that satisfy predicate [p]. *)
 
   Parameter partition : (key -> A -> bool) -> t A -> t A * t A.
-  (** [partition p s] returns a pair of sets [(s1, s2)], where
-  [s1] is the set of all the elements of [s] that satisfy the
-  predicate [p], and [s2] is the set of all the elements of
-  [s] that do not satisfy [p]. *)
+  (** [partition p m] returns a pair of maps [(m1, m2)], where
+  [m1] is the map of all the elements of [m] that satisfy the
+  predicate [p], and [m2] is the map of all the elements of
+  [m] that do not satisfy [p]. *)
 
   Parameter cardinal : t A -> nat.
-  (** Return the number of elements of a set. *)
+  (** Return the number of elements of a map. *)
 
   Parameter elements : t A -> list (key * A).
-  (** Return the list of all elements of the given set, in any order. *)
+  (** Return the list of all keys and values of the given map,
+  in any order. *)
 
   Parameter choose : t A -> option (key * A).
-  (** Return one element of the given set, or [None] if
-  the set is empty. Which element is chosen is unspecified.
-  Equal sets could return different elements. *)
+  (** Return one key and value of the given map, or [None] if
+  the map is empty. Which key is chosen is unspecified.
+  Equal maps could return different elements. *)
   End Foo.
 End HasWOps.
 
 
 Module Type WOps (E : DecidableType).
   Definition key := E.t.
-  Parameter t : Type -> Type. (** the abstract type of sets *)
+  Parameter t : Type -> Type. (** the abstract type of maps (given a value type) *)
   Include HasWOps.
 End WOps.
 
 
-(** ** Functorial signature for weak sets
+(** ** Functorial signature for weak maps
 
-    Weak sets are sets without ordering on base elements, only
+    Weak maps are maps without ordering on keys, only
     a decidable equality. *)
 
 Module Type WMapsOn (E : DecidableType).
@@ -169,7 +160,7 @@ Module Type WMapsOn (E : DecidableType).
   Include HasEqDec.
   *)
 
-  (** Specifications of set operators *)
+  (** Specifications of map operators *)
 
   Section Spec.
 
@@ -221,7 +212,7 @@ Module Type WMapsOn (E : DecidableType).
     snd (partition f s) [=] filter (fun k x => negb (f k x)) s.
   
   Parameter elements_spec1 : InA (fun p1 p2 => E.eq (fst p1) (fst p2) /\ snd p1 = snd p2) (k, v) (elements s) <-> MapsTo k v s.
-  (** When compared with ordered sets, here comes the only
+  (** When compared with ordered maps, here comes the only
       property that is really weaker: *)
   Parameter elements_spec2w : NoDupA  (fun p1 p2 => E.eq (fst p1) (fst p2) /\ snd p1 = snd p2) (elements s).
   Parameter choose_spec1 : choose s = Some (k,v) -> MapsTo k v s.
@@ -232,9 +223,9 @@ Module Type WMapsOn (E : DecidableType).
 
 End WMapsOn.
 
-(** ** Static signature for weak sets
+(** ** Static signature for weak maps
 
-    Similar to the functorial signature [WSetsOn], except that the
+    Similar to the functorial signature [WMapsOn], except that the
     module [E] of base elements is incorporated in the signature. *)
 
 Module Type WMaps.
@@ -242,9 +233,9 @@ Module Type WMaps.
   Include WMapsOn E.
 End WMaps.
 
-(** ** Functorial signature for sets on ordered elements
+(** ** Functorial signature for maps on ordered elements
 
-    Based on [WMapsOn], plus ordering on sets and [min_key] and [max_key]
+    Based on [WMapsOn], plus ordering on keys and [min_elt] and [max_elt]
     and some stronger specifications for other functions. *)
 
 Module Type HasOrdOps (Import T:TypElt).
@@ -254,17 +245,17 @@ Module Type HasOrdOps (Import T:TypElt).
   (* TODO: Does this make sense? We'd have to compare values
   Parameter compare : t A -> t A -> comparison.
   *)
-  (** Total ordering between sets. Can be used as the ordering function
-  for doing sets of sets. *)
+  (** Total ordering between maps. Can be used as the ordering function
+  for doing maps of maps. *)
 
   Parameter min_elt : t A -> option (key * A).
-  (** Return the smallest element of the given set
+  (** Return the smallest key and the associated value of the given map
   (with respect to the [E.compare] ordering),
-  or [None] if the set is empty. *)
+  or [None] if the map is empty. *)
 
   Parameter max_elt : t A -> option (key * A).
-  (** Same as [min_key], but returns the largest element of the
-  given set. *)
+  (** Same as [min_elt], but returns the largest key and the associated
+  value of the given map. *)
   End Foo.
 End HasOrdOps.
 
@@ -313,9 +304,9 @@ Module Type MapsOn (E : OrderedType).
 End MapsOn.
 
 
-(** ** Static signature for sets on ordered elements
+(** ** Static signature for maps on ordered keys
 
-    Similar to the functorial signature [SetsOn], except that the
+    Similar to the functorial signature [MapsOn], except that the
     module [E] of base elements is incorporated in the signature. *)
 
 Module Type Maps.
@@ -328,11 +319,11 @@ Module Type M := Maps.
 
 (** ** Some subtyping tests
 <<
-WSetsOn ---> WSets
+WMapsOn ---> WMaps
  |           |
  |           |
  V           V
-SetsOn  ---> Sets
+MapsOn  ---> Maps
 
 Module S_WS (M' : Maps) <: WMaps := M'.
 Module Sfun_WSfun (E:OrderedType)(M' : MapsOn E) <: WMapsOn E := M'.
@@ -343,46 +334,46 @@ Module WS_WSfun (M' : WMaps) <: WMapsOn M'.E := M'.
 
 
 
-(** ** Signatures for set representations with ill-formed values.
+(** ** Signatures for map representations with ill-formed values.
 
    Motivation:
 
-   For many implementation of finite sets (AVL trees, sorted
+   For many implementation of finite maps (AVL trees, sorted
    lists, lists without duplicates), we use the same two-layer
    approach:
 
    - A first module deals with the datatype (eg. list or tree) without
    any restriction on the values we consider. In this module (named
    "Raw" in the past), some results are stated under the assumption
-   that some invariant (e.g. sortedness) holds for the input sets. We
-   also prove that this invariant is preserved by set operators.
+   that some invariant (e.g. sortedness) holds for the input maps. We
+   also prove that this invariant is preserved by map operators.
 
-   - A second module implements the exact Sets interface by
+   - A second module implements the exact Maps interface by
    using a subtype, for instance [{ l : list A | sorted l }].
    This module is a mere wrapper around the first Raw module.
 
    With the interfaces below, we give some respectability to
    the "Raw" modules. This allows the interested users to directly
    access them via the interfaces. Even better, we can build once
-   and for all a functor doing the transition between Raw and usual Sets.
+   and for all a functor doing the transition between Raw and usual Maps.
 
    Description:
 
-   The type [t] of sets may contain ill-formed values on which our
-   set operators may give wrong answers. In particular, [mem]
-   may not see a element in a ill-formed set (think for instance of a
+   The type [t] of maps may contain ill-formed values on which our
+   map operators may give wrong answers. In particular, [mem]
+   may not see a element in a ill-formed map (think for instance of a
    unsorted list being given to an optimized [mem] that stops
    its search as soon as a strictly larger element is encountered).
 
    Unlike optimized operators, the [In] predicate is supposed to
-   always be correct, even on ill-formed sets. Same for [Equal] and
+   always be correct, even on ill-formed maps. Same for [Equal] and
    other logical predicates.
 
    A predicate parameter [Ok] is used to discriminate between
-   well-formed and ill-formed values. Some lemmas hold only on sets
+   well-formed and ill-formed values. Some lemmas hold only on maps
    validating [Ok]. This predicate [Ok] is required to be
-   preserved by set operators. Moreover, a boolean function [isok]
-   should exist for identifying (at least some of) the well-formed sets.
+   preserved by map operators. Moreover, a boolean function [isok]
+   should exist for identifying (at least some of) the well-formed maps.
 
 *)
 

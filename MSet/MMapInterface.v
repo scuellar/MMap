@@ -254,12 +254,12 @@ Module Type HasOrdOps (Import T:TypElt).
   (** Total ordering between sets. Can be used as the ordering function
   for doing sets of sets. *)
 
-  Parameter min_key : t A -> option key.
+  Parameter min_elt : t A -> option (key * A).
   (** Return the smallest element of the given set
   (with respect to the [E.compare] ordering),
   or [None] if the set is empty. *)
 
-  Parameter max_key : t A -> option key.
+  Parameter max_elt : t A -> option (key * A).
   (** Same as [min_key], but returns the largest element of the
   given set. *)
   End Foo.
@@ -293,13 +293,13 @@ Module Type MapsOn (E : OrderedType).
    which can now be proved to receive elements in increasing order.
   *)
 
-  Parameter min_key_spec1 : min_key s = Some k -> In k s.
-  Parameter min_key_spec2 : min_key s = Some k -> In k' s -> ~ E.lt k' k.
-  Parameter min_key_spec3 : min_key s = None -> Empty s.
+  Parameter min_elt_spec1 : min_elt s = Some (k,v) -> MapsTo k v s.
+  Parameter min_elt_spec2 : min_elt s = Some (k,v) -> MapsTo k' v' s -> ~ E.lt k' k.
+  Parameter min_elt_spec3 : min_elt s = None -> Empty s.
 
-  Parameter max_key_spec1 : max_key s = Some k -> In k s.
-  Parameter max_key_spec2 : max_key s = Some k -> In k' s -> ~ E.lt k k'.
-  Parameter max_key_spec3 : max_key s = None -> Empty s.
+  Parameter max_elt_spec1 : max_elt s = Some (k,v) -> MapsTo k v s.
+  Parameter max_elt_spec2 : max_elt s = Some (k,v) -> MapsTo k' v' s -> ~ E.lt k k'.
+  Parameter max_elt_spec3 : max_elt s = None -> Empty s.
 
   (** Additional specification of [choose] *)
   Parameter choose_spec3 : choose s = Some (k, v) -> choose s' = Some (k', v') ->

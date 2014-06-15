@@ -36,7 +36,7 @@ Module Type HasWOps (Import T:TypElt).
   (** Test whether a map is empty or not. *)
 
   Parameter mem : key -> t A -> bool.
-  (** [mem k s] tests whether [k] belongs to the map [s]. *)
+  (** [mem k m] tests whether [k] belongs to the map [m]. *)
  
   Parameter find : key -> t A -> option A.
 
@@ -144,14 +144,14 @@ Module Type WMapsOn (E : DecidableType).
   Declare Instance In_compat : Proper (E.eq==>eq==>iff) In.
 
 
-  Definition Equal s s' := forall (k : key) (a : A), MapsTo k a s <-> MapsTo k a s'.
-  Definition Subset s s' := forall (k : key) (a : A), MapsTo k a s -> MapsTo k a s'.
-  Definition Empty s := forall k a, ~ MapsTo k a s.
-  Definition For_all (P : key -> A -> Prop) s := forall k a, MapsTo k a s -> P k a.
-  Definition Exists (P : key -> A -> Prop) s := exists k a, MapsTo k a s /\ P k a.
+  Definition Equal m m' := forall (k : key) (a : A), MapsTo k a m <-> MapsTo k a m'.
+  Definition Subset m m' := forall (k : key) (a : A), MapsTo k a m -> MapsTo k a m'.
+  Definition Empty m := forall k a, ~ MapsTo k a m.
+  Definition For_all (P : key -> A -> Prop) m := forall k a, MapsTo k a m -> P k a.
+  Definition Exists (P : key -> A -> Prop) m := exists k a, MapsTo k a m /\ P k a.
 
-  Notation "s  [=]  t" := (Equal s t) (at level 70, no associativity).
-  Notation "s  [<=]  t" := (Subset s t) (at level 70, no associativity).
+  Notation "m  [=]  n" := (Equal m n) (at level 70, no associativity).
+  Notation "m  [<=]  n" := (Subset m n) (at level 70, no associativity).
 
   Definition eq : t A -> t A -> Prop := Equal.
  
@@ -164,59 +164,59 @@ Module Type WMapsOn (E : DecidableType).
 
   Section Spec.
 
-  Variable s s': t A.
+  Variable m m': t A.
   Variable k k' : key.
   Variable v v' : A.
   Variable f : key -> A -> bool.
   Notation compatb := (Proper (E.eq==>Logic.eq==>Logic.eq)) (only parsing).
 
-  Parameter MapsTo_spec : E.eq k k' -> MapsTo k v s -> MapsTo k' v s.
+  Parameter MapsTo_spec : E.eq k k' -> MapsTo k v m -> MapsTo k' v m.
 
-  Parameter unique: MapsTo k v s -> MapsTo k v' s -> v = v'.
+  Parameter unique: MapsTo k v m -> MapsTo k v' m -> v = v'.
 
-  Parameter find_spec : find k s = Some v <-> MapsTo k v s.
-  Parameter mem_spec : mem k s = true <-> In k s.
+  Parameter find_spec : find k m = Some v <-> MapsTo k v m.
+  Parameter mem_spec : mem k m = true <-> In k m.
   (* TODO: Do we need Equiv here
-  Parameter equal_spec : equal s s' = true <-> s[=]s'.
-  Parameter subset_spec : subset s s' = true <-> s[<=]s'.
+  Parameter equal_spec : equal m m' = true <-> m[=]m'.
+  Parameter subset_spec : subset m m' = true <-> m[<=]m'.
   *)
   Parameter empty_spec : Empty (empty A).
-  Parameter is_empty_spec : is_empty s = true <-> Empty s.
-  (* Parameter add_spec : In k1 (add k2 v s) <-> E.eq y x \/ In y s. *)
-  Parameter add_spec1: E.eq k k' -> MapsTo k v (add k' v s).
-  Parameter add_spec2: ~ E.eq k k' -> (MapsTo k v (add k' v' s) <-> MapsTo k v s).
+  Parameter is_empty_spec : is_empty m = true <-> Empty m.
+  (* Parameter add_spec : In k1 (add k2 v m) <-> E.eq y x \/ In y m. *)
+  Parameter add_spec1: E.eq k k' -> MapsTo k v (add k' v m).
+  Parameter add_spec2: ~ E.eq k k' -> (MapsTo k v (add k' v' m) <-> MapsTo k v m).
 
-  Parameter remove_spec1: E.eq k k' -> ~ In k (remove k' s).
-  Parameter remove_spec2: ~ E.eq k k' -> MapsTo k' v (remove k s) <-> MapsTo k' v s.
+  Parameter remove_spec1: E.eq k k' -> ~ In k (remove k' m).
+  Parameter remove_spec2: ~ E.eq k k' -> MapsTo k' v (remove k m) <-> MapsTo k' v m.
 
   Parameter singleton_spec: E.eq k k' <-> MapsTo k v (singleton k' v).
 
   (*
-  Parameter union_spec : In x (union s s') <-> In x s \/ In x s'.
-  Parameter inter_spec : In x (inter s s') <-> In x s /\ In x s'.
-  Parameter diff_spec : In x (diff s s') <-> In x s /\ ~In x s'.
+  Parameter union_spec : In x (union m m') <-> In x m \/ In x m'.
+  Parameter inter_spec : In x (inter m m') <-> In x m /\ In x m'.
+  Parameter diff_spec : In x (diff m m') <-> In x m /\ ~In x m'.
   *)
 
   Parameter fold_spec : forall (X : Type) (i : X) (f : key -> A -> X -> X),
-    fold f s i = fold_left (fun a p => f (fst p) (snd p) a ) (elements s) i.
-  Parameter cardinal_spec : cardinal s = length (elements s).
+    fold f m i = fold_left (fun a p => f (fst p) (snd p) a ) (elements m) i.
+  Parameter cardinal_spec : cardinal m = length (elements m).
   Parameter filter_spec : compatb f ->
-    (MapsTo k v (filter f s) <-> MapsTo k v s /\ f k v = true).
+    (MapsTo k v (filter f m) <-> MapsTo k v m /\ f k v = true).
   Parameter for_all_spec : compatb f ->
-    (for_all f s = true <-> For_all (fun k v => f k v = true) s).
+    (for_all f m = true <-> For_all (fun k v => f k v = true) m).
   Parameter exists_spec : compatb f ->
-    (exists_ f s = true <-> Exists (fun k v => f k v = true) s).
+    (exists_ f m = true <-> Exists (fun k v => f k v = true) m).
   Parameter partition_spec1 : compatb f ->
-    fst (partition f s) [=] filter f s.
+    fst (partition f m) [=] filter f m.
   Parameter partition_spec2 : compatb f ->
-    snd (partition f s) [=] filter (fun k x => negb (f k x)) s.
+    snd (partition f m) [=] filter (fun k x => negb (f k x)) m.
   
-  Parameter elements_spec1 : InA (fun p1 p2 => E.eq (fst p1) (fst p2) /\ snd p1 = snd p2) (k, v) (elements s) <-> MapsTo k v s.
+  Parameter elements_spec1 : InA (fun p1 p2 => E.eq (fst p1) (fst p2) /\ snd p1 = snd p2) (k, v) (elements m) <-> MapsTo k v m.
   (** When compared with ordered maps, here comes the only
       property that is really weaker: *)
-  Parameter elements_spec2w : NoDupA  (fun p1 p2 => E.eq (fst p1) (fst p2) /\ snd p1 = snd p2) (elements s).
-  Parameter choose_spec1 : choose s = Some (k,v) -> MapsTo k v s.
-  Parameter choose_spec2 : choose s = None -> Empty s.
+  Parameter elements_spec2w : NoDupA  (fun p1 p2 => E.eq (fst p1) (fst p2) /\ snd p1 = snd p2) (elements m).
+  Parameter choose_spec1 : choose m = Some (k,v) -> MapsTo k v m.
+  Parameter choose_spec2 : choose m = None -> Empty m.
 
   End Spec.
   End Foo.
@@ -271,33 +271,33 @@ Module Type MapsOn (E : OrderedType).
 
   Section Spec.
   Variable A : Type.
-  Variable s s': t A.
+  Variable m m': t A.
   Variable k k' : key.
   Variable v v' : A.
 
   (* TODO: Requires HasLt or IsStrOrder
-  Parameter compare_spec : CompSpec eq lt s s' (compare s s').
+  Parameter compare_spec : CompSpec eq lt m m' (compare m m').
   *)
 
   (** Additional specification of [elements] *)
-  Parameter elements_spec2 : sort (fun p1 p2 => E.lt (fst p1) (fst p2)) (elements s).
+  Parameter elements_spec2 : sort (fun p1 p2 => E.lt (fst p1) (fst p2)) (elements m).
 
   (** Remark: since [fold] is specified via [elements], this stronger
    specification of [elements] has an indirect impact on [fold],
    which can now be proved to receive elements in increasing order.
   *)
 
-  Parameter min_elt_spec1 : min_elt s = Some (k,v) -> MapsTo k v s.
-  Parameter min_elt_spec2 : min_elt s = Some (k,v) -> MapsTo k' v' s -> ~ E.lt k' k.
-  Parameter min_elt_spec3 : min_elt s = None -> Empty s.
+  Parameter min_elt_spec1 : min_elt m = Some (k,v) -> MapsTo k v m.
+  Parameter min_elt_spec2 : min_elt m = Some (k,v) -> MapsTo k' v' m -> ~ E.lt k' k.
+  Parameter min_elt_spec3 : min_elt m = None -> Empty m.
 
-  Parameter max_elt_spec1 : max_elt s = Some (k,v) -> MapsTo k v s.
-  Parameter max_elt_spec2 : max_elt s = Some (k,v) -> MapsTo k' v' s -> ~ E.lt k k'.
-  Parameter max_elt_spec3 : max_elt s = None -> Empty s.
+  Parameter max_elt_spec1 : max_elt m = Some (k,v) -> MapsTo k v m.
+  Parameter max_elt_spec2 : max_elt m = Some (k,v) -> MapsTo k' v' m -> ~ E.lt k k'.
+  Parameter max_elt_spec3 : max_elt m = None -> Empty m.
 
   (** Additional specification of [choose] *)
-  Parameter choose_spec3 : choose s = Some (k, v) -> choose s' = Some (k', v') ->
-    Equal s s' -> E.eq k k'.
+  Parameter choose_spec3 : choose m = Some (k, v) -> choose m' = Some (k', v') ->
+    Equal m m' -> E.eq k k'.
 
   End Spec.
 

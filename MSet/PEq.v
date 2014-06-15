@@ -1,4 +1,5 @@
 Require Import Coq.Classes.RelationClasses.
+Require Import Coq.Structures.Equalities.
 
 Module Type PTyp.
   Parameter Inline(10) t : Type -> Type.

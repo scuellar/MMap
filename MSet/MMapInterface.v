@@ -152,6 +152,7 @@ Module Type WMapsOn (E : DecidableType).
   (* TODO: *Shrug* *)
   Declare Instance In_compat : Proper (E.eq==>eq==>iff) In.
 
+
   Definition Equal s s' := forall (k : key) (a : A), MapsTo k a s <-> MapsTo k a s'.
   Definition Subset s s' := forall (k : key) (a : A), MapsTo k a s -> MapsTo k a s'.
   Definition Empty s := forall k a, ~ MapsTo k a s.
@@ -177,6 +178,8 @@ Module Type WMapsOn (E : DecidableType).
   Variable v v' : A.
   Variable f : key -> A -> bool.
   Notation compatb := (Proper (E.eq==>Logic.eq==>Logic.eq)) (only parsing).
+
+  Parameter MapsTo_spec : E.eq k k' -> MapsTo k v s -> MapsTo k' v s.
 
   Parameter unique: MapsTo k v s -> MapsTo k v' s -> v = v'.
 

@@ -19,6 +19,8 @@ Set Implicit Arguments.
 
 Unset Strict Implicit.
 
+Definition Cmp (elt:Type)(cmp:elt->elt->bool) e1 e2 := cmp e1 e2 = true.
+
 Module Type TypElt.
  Parameter t : Type -> Type.
  Parameter key : Type.
@@ -139,19 +141,19 @@ Module Type WMapsOn (E : DecidableType).
 
   Parameter MapsTo : key -> A -> t A -> Prop.
   Definition In (k:key)(m: t A) : Prop := exists e:A, MapsTo k e m.
-
-  (* TODO: *Shrug* *)
   Declare Instance In_compat : Proper (E.eq==>eq==>iff) In.
 
 
-  Definition Equal m m' := forall (k : key) (a : A), MapsTo k a m <-> MapsTo k a m'.
-  Definition Subset m m' := forall (k : key) (a : A), MapsTo k a m -> MapsTo k a m'.
+  (* TODO: Copy explanation from FMap *)
+  Definition Equal m m' := forall k, @find A k m = find k m'.
+  Definition Equiv (eq_elt: A -> A -> Prop) m m' :=
+         (forall k, In k m <-> In k m') /\
+         (forall k e e', MapsTo k e m -> MapsTo k e' m' -> eq_elt e e').
+  Definition Equivb (cmp: A -> A -> bool) := Equiv (Cmp cmp).
+
   Definition Empty m := forall k a, ~ MapsTo k a m.
   Definition For_all (P : key -> A -> Prop) m := forall k a, MapsTo k a m -> P k a.
   Definition Exists (P : key -> A -> Prop) m := exists k a, MapsTo k a m /\ P k a.
-
-  Notation "m  [=]  n" := (Equal m n) (at level 70, no associativity).
-  Notation "m  [<=]  n" := (Subset m n) (at level 70, no associativity).
 
   Definition eq : t A -> t A -> Prop := Equal.
  
@@ -176,10 +178,12 @@ Module Type WMapsOn (E : DecidableType).
 
   Parameter find_spec : find k m = Some v <-> MapsTo k v m.
   Parameter mem_spec : mem k m = true <-> In k m.
-  (* TODO: Do we need Equiv here
-  Parameter equal_spec : equal m m' = true <-> m[=]m'.
-  Parameter subset_spec : subset m m' = true <-> m[<=]m'.
-  *)
+  Section EqSpec.
+     Variable cmp : A -> A -> bool.
+     Parameter equal_1 : Equivb cmp m m' -> equal cmp m m' = true.
+     Parameter equal_2 : equal cmp m m' = true -> Equivb cmp m m'.
+  End EqSpec.
+
   Parameter empty_spec : Empty (empty A).
   Parameter is_empty_spec : is_empty m = true <-> Empty m.
   (* Parameter add_spec : In k1 (add k2 v m) <-> E.eq y x \/ In y m. *)
@@ -207,9 +211,9 @@ Module Type WMapsOn (E : DecidableType).
   Parameter exists_spec : compatb f ->
     (exists_ f m = true <-> Exists (fun k v => f k v = true) m).
   Parameter partition_spec1 : compatb f ->
-    fst (partition f m) [=] filter f m.
+    Equal (fst (partition f m)) (filter f m).
   Parameter partition_spec2 : compatb f ->
-    snd (partition f m) [=] filter (fun k x => negb (f k x)) m.
+    Equal (snd (partition f m)) (filter (fun k x => negb (f k x)) m).
   
   Parameter elements_spec1 : InA (fun p1 p2 => E.eq (fst p1) (fst p2) /\ snd p1 = snd p2) (k, v) (elements m) <-> MapsTo k v m.
   (** When compared with ordered maps, here comes the only

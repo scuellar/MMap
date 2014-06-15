@@ -50,6 +50,8 @@ Module Type HasWOps (Import T:TypElt).
 
   Parameter mem : key -> t A -> bool.
   (** [mem x s] tests whether [x] belongs to the set [s]. *)
+ 
+  Parameter find : key -> t A -> option A.
 
   Parameter add : key -> A -> t A -> t A.
   (** [add x s] returns a set containing all elements of [s],
@@ -169,11 +171,12 @@ Module Type WMapsOn (E : DecidableType).
   Variable s s': t A.
   Variable k k' : key.
   Variable v v' : A.
-  Variable f : key -> bool.
-  Notation compatb := (Proper (E.eq==>Logic.eq)) (only parsing).
+  Variable f : key -> A -> bool.
+  Notation compatb := (Proper (E.eq==>Logic.eq==>Logic.eq)) (only parsing).
 
   Parameter unique: MapsTo k v s -> MapsTo k v' s -> v = v'.
 
+  Parameter find_spec : find k s = Some v <-> MapsTo k v s.
   Parameter mem_spec : mem k s = true <-> In k s.
   (* TODO: Do we need Equiv here
   Parameter equal_spec : equal s s' = true <-> s[=]s'.
@@ -202,91 +205,105 @@ Module Type WMapsOn (E : DecidableType).
   Parameter filter_spec : compatb f ->
     (MapsTo k v (filter f s) <-> MapsTo k v s /\ f k v = true).
   Parameter for_all_spec : compatb f ->
-    (for_all f s = true <-> For_all (fun x => f x = true) s).
+    (for_all f s = true <-> For_all (fun k v => f k v = true) s).
   Parameter exists_spec : compatb f ->
-    (exists_ f s = true <-> Exists (fun x => f x = true) s).
+    (exists_ f s = true <-> Exists (fun k v => f k v = true) s).
   Parameter partition_spec1 : compatb f ->
     fst (partition f s) [=] filter f s.
   Parameter partition_spec2 : compatb f ->
-    snd (partition f s) [=] filter (fun x => negb (f x)) s.
-  Parameter elements_spec1 : InA E.eq x (elements s) <-> In x s.
+    snd (partition f s) [=] filter (fun k x => negb (f k x)) s.
+  
+  Parameter elements_spec1 : InA (fun p1 p2 => E.eq (fst p1) (fst p2) /\ snd p1 = snd p2) (k, v) (elements s) <-> MapsTo k v s.
   (** When compared with ordered sets, here comes the only
       property that is really weaker: *)
-  Parameter elements_spec2w : NoDupA E.eq (elements s).
-  Parameter choose_spec1 : choose s = Some x -> In x s.
+  Parameter elements_spec2w : NoDupA  (fun p1 p2 => E.eq (fst p1) (fst p2) /\ snd p1 = snd p2) (elements s).
+  Parameter choose_spec1 : choose s = Some (k,v) -> MapsTo k v s.
   Parameter choose_spec2 : choose s = None -> Empty s.
 
   End Spec.
+  End Foo.
 
-End WSetsOn.
+End WMapsOn.
 
 (** ** Static signature for weak sets
 
     Similar to the functorial signature [WSetsOn], except that the
     module [E] of base elements is incorporated in the signature. *)
 
-Module Type WSets.
+Module Type WMaps.
   Declare Module E : DecidableType.
-  Include WSetsOn E.
-End WSets.
+  Include WMapsOn E.
+End WMaps.
 
 (** ** Functorial signature for sets on ordered elements
 
-    Based on [WSetsOn], plus ordering on sets and [min_key] and [max_key]
+    Based on [WMapsOn], plus ordering on sets and [min_key] and [max_key]
     and some stronger specifications for other functions. *)
 
-Module Type HasOrdOps (Import T:TypKey).
+Module Type HasOrdOps (Import T:TypElt).
+  Section Foo.
+  Variable A : Type.
 
-  Parameter compare : t -> t -> comparison.
+  (* TODO: Does this make sense? We'd have to compare values
+  Parameter compare : t A -> t A -> comparison.
+  *)
   (** Total ordering between sets. Can be used as the ordering function
   for doing sets of sets. *)
 
-  Parameter min_key : t -> option key.
+  Parameter min_key : t A -> option key.
   (** Return the smallest element of the given set
   (with respect to the [E.compare] ordering),
   or [None] if the set is empty. *)
 
-  Parameter max_key : t -> option key.
+  Parameter max_key : t A -> option key.
   (** Same as [min_key], but returns the largest element of the
   given set. *)
-
+  End Foo.
 End HasOrdOps.
 
 Module Type Ops (E : OrderedType) := WOps E <+ HasOrdOps.
 
 
-Module Type SetsOn (E : OrderedType).
-  Include WSetsOn E <+ HasOrdOps <+ HasLt <+ IsStrOrder.
+Module Type MapsOn (E : OrderedType).
+
+  Include WMapsOn E <+ HasOrdOps.
+  (* TODO: type of HasLt not matched (like Eq above)
+  Include WMapsOn E <+ HasOrdOps <+ HasLt <+ IsStrOrder.
+  *)
 
   Section Spec.
-  Variable s s': t.
-  Variable x y : key.
+  Variable A : Type.
+  Variable s s': t A.
+  Variable k k' : key.
+  Variable v v' : A.
 
+  (* TODO: Requires HasLt or IsStrOrder
   Parameter compare_spec : CompSpec eq lt s s' (compare s s').
+  *)
 
   (** Additional specification of [elements] *)
-  Parameter elements_spec2 : sort E.lt (elements s).
+  Parameter elements_spec2 : sort (fun p1 p2 => E.lt (fst p1) (fst p2)) (elements s).
 
   (** Remark: since [fold] is specified via [elements], this stronger
    specification of [elements] has an indirect impact on [fold],
    which can now be proved to receive elements in increasing order.
   *)
 
-  Parameter min_key_spec1 : min_key s = Some x -> In x s.
-  Parameter min_key_spec2 : min_key s = Some x -> In y s -> ~ E.lt y x.
+  Parameter min_key_spec1 : min_key s = Some k -> In k s.
+  Parameter min_key_spec2 : min_key s = Some k -> In k' s -> ~ E.lt k' k.
   Parameter min_key_spec3 : min_key s = None -> Empty s.
 
-  Parameter max_key_spec1 : max_key s = Some x -> In x s.
-  Parameter max_key_spec2 : max_key s = Some x -> In y s -> ~ E.lt x y.
+  Parameter max_key_spec1 : max_key s = Some k -> In k s.
+  Parameter max_key_spec2 : max_key s = Some k -> In k' s -> ~ E.lt k k'.
   Parameter max_key_spec3 : max_key s = None -> Empty s.
 
   (** Additional specification of [choose] *)
-  Parameter choose_spec3 : choose s = Some x -> choose s' = Some y ->
-    Equal s s' -> E.eq x y.
+  Parameter choose_spec3 : choose s = Some (k, v) -> choose s' = Some (k', v') ->
+    Equal s s' -> E.eq k k'.
 
   End Spec.
 
-End SetsOn.
+End MapsOn.
 
 
 (** ** Static signature for sets on ordered elements
@@ -294,12 +311,12 @@ End SetsOn.
     Similar to the functorial signature [SetsOn], except that the
     module [E] of base elements is incorporated in the signature. *)
 
-Module Type Sets.
+Module Type Maps.
   Declare Module E : OrderedType.
-  Include SetsOn E.
-End Sets.
+  Include MapsOn E.
+End Maps.
 
-Module Type S := Sets.
+Module Type M := Maps.
 
 
 (** ** Some subtyping tests
@@ -310,10 +327,10 @@ WSetsOn ---> WSets
  V           V
 SetsOn  ---> Sets
 
-Module S_WS (M : Sets) <: WSets := M.
-Module Sfun_WSfun (E:OrderedType)(M : SetsOn E) <: WSetsOn E := M.
-Module S_Sfun (M : Sets) <: SetsOn M.E := M.
-Module WS_WSfun (M : WSets) <: WSetsOn M.E := M.
+Module S_WS (M' : Maps) <: WMaps := M'.
+Module Sfun_WSfun (E:OrderedType)(M' : MapsOn E) <: WMapsOn E := M'.
+Module S_Sfun (M' : Maps) <: MapsOn M'.E := M'.
+Module WS_WSfun (M' : WMaps) <: WMapsOn M'.E := M'.
 >>
 *)
 

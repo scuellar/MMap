@@ -6,10 +6,10 @@
 (*         *       GNU Lesser General Public License Version 2.1       *)
 (***********************************************************************)
 
-(** * Finite sets library *)
+(** * Finite maps library *)
 
 (** This file proposes an implementation of the non-dependant
-    interface [MSetInterface.S] using strictly ordered list. *)
+    interface [MMapInterface.S] using strictly ordered list. *)
 
 Require Export MMapInterface OrdersFacts OrdersLists.
 Set Implicit Arguments.
@@ -17,9 +17,9 @@ Unset Strict Implicit.
 
 (** * Functions over lists
 
-   First, we provide sets as lists which are not necessarily sorted.
+   First, we provide maps as lists which are not necessarily sorted.
    The specs are proved under the additional condition of being sorted.
-   And the functions returning sets are proved to preserve this invariant. *)
+   And the functions returning maps are proved to preserve this invariant. *)
 
 Module Ops (X:OrderedType) <: WOps X.
 
@@ -34,10 +34,10 @@ Module Ops (X:OrderedType) <: WOps X.
 
   Definition is_empty (l : t A) := if l then true else false.
 
-  (** ** The set operations. *)
+  (** ** The maps operations. *)
 
-  Fixpoint mem k (s : t A) :=
-    match s with
+  Fixpoint mem k (m : t A) :=
+    match m with
     | nil => false
     | (k', _) :: l =>
         match X.compare k k' with
@@ -47,8 +47,8 @@ Module Ops (X:OrderedType) <: WOps X.
         end
     end.
 
-  Fixpoint find k (s : t A) :=
-    match s with
+  Fixpoint find k (m : t A) :=
+    match m with
     | nil => None
     | (k', v) :: l =>
         match X.compare k k' with
@@ -58,12 +58,12 @@ Module Ops (X:OrderedType) <: WOps X.
         end
     end.
 
-  Fixpoint add k v (s : t A) :=
-    match s with
+  Fixpoint add k v (m : t A) :=
+    match m with
     | nil => (k, v) :: nil
     | (k', v') :: l =>
         match X.compare k k' with
-        | Lt => (k, v) :: s
+        | Lt => (k, v) :: m
         | Eq => (k, v) :: l
         | Gt => (k', v') :: add k v l
         end
@@ -71,68 +71,68 @@ Module Ops (X:OrderedType) <: WOps X.
 
   Definition singleton (k : key) (v : A) := (k, v) :: nil.
 
-  Fixpoint remove k (s : t A) :=
-    match s with
+  Fixpoint remove k (m : t A) :=
+    match m with
     | nil => nil
     | (k', v) :: l =>
         match X.compare k k' with
-        | Lt => s
+        | Lt => m
         | Eq => l
         | Gt => (k', v) :: remove k l
         end
     end.
 
 (*
-  Fixpoint union (s : t) : t -> t :=
-    match s with
-    | nil => fun s' => s'
+  Fixpoint union (m : t) : t -> t :=
+    match m with
+    | nil => fun m' => m'
     | x :: l =>
-        (fix union_aux (s' : t) : t :=
-           match s' with
-           | nil => s
+        (fix union_aux (m' : t) : t :=
+           match m' with
+           | nil => m
            | x' :: l' =>
                match X.compare x x' with
-               | Lt => x :: union l s'
+               | Lt => x :: union l m'
                | Eq => x :: union l l'
                | Gt => x' :: union_aux l'
                end
            end)
     end.
 
-  Fixpoint inter (s : t) : t -> t :=
-    match s with
+  Fixpoint inter (m : t) : t -> t :=
+    match m with
     | nil => fun _ => nil
     | x :: l =>
-        (fix inter_aux (s' : t) : t :=
-           match s' with
+        (fix inter_aux (m' : t) : t :=
+           match m' with
            | nil => nil
            | x' :: l' =>
                match X.compare x x' with
-               | Lt => inter l s'
+               | Lt => inter l m'
                | Eq => x :: inter l l'
                | Gt => inter_aux l'
                end
            end)
     end.
 
-  Fixpoint diff (s : t) : t -> t :=
-    match s with
+  Fixpoint diff (m : t) : t -> t :=
+    match m with
     | nil => fun _ => nil
     | x :: l =>
-        (fix diff_aux (s' : t) : t :=
-           match s' with
-           | nil => s
+        (fix diff_aux (m' : t) : t :=
+           match m' with
+           | nil => m
            | x' :: l' =>
                match X.compare x x' with
-               | Lt => x :: diff l s'
+               | Lt => x :: diff l m'
                | Eq => diff l l'
                | Gt => diff_aux l'
                end
            end)
     end.
 *)
-  Fixpoint equal (val_eq : A -> A -> bool) (s : t A) (s' : t A) : bool :=
-    match s, s' with
+  Fixpoint equal (val_eq : A -> A -> bool) (m : t A) (m' : t A) : bool :=
+    match m, m' with
     | nil, nil => true
     | (k, v) :: l, (k', v') :: l' =>
         match X.compare k k' with
@@ -142,75 +142,75 @@ Module Ops (X:OrderedType) <: WOps X.
     | _, _ => false
     end.
 
-  Fixpoint subset (val_eq : A -> A -> bool) s s' :=
-    match s, s' with
+  Fixpoint subset (val_eq : A -> A -> bool) m m' :=
+    match m, m' with
     | nil, _ => true
     | (k, v) :: l, (k', v') :: l' =>
         match X.compare k k' with
         | Lt => false
         | Eq => val_eq v v' && subset val_eq l l'
-        | Gt => subset val_eq s l'
+        | Gt => subset val_eq m l'
         end
     | _, _ => false
     end.
 
-  Definition fold (B : Type) (f : key -> A -> B -> B) (s : t A) (i : B) : B :=
-    fold_left (fun acc p => f (fst p) (snd p) acc) s i.
+  Definition fold (B : Type) (f : key -> A -> B -> B) (m : t A) (i : B) : B :=
+    fold_left (fun acc p => f (fst p) (snd p) acc) m i.
 
-  Fixpoint filter (f : key -> A -> bool) (s : t A) : t A :=
-    match s with
+  Fixpoint filter (f : key -> A -> bool) (m : t A) : t A :=
+    match m with
     | nil => nil
     | (k, v) :: l => if f k v then (k, v) :: filter f l else filter f l
     end.
 
-  Fixpoint for_all (f : key -> A -> bool) (s : t A) : bool :=
-    match s with
+  Fixpoint for_all (f : key -> A -> bool) (m : t A) : bool :=
+    match m with
     | nil => true
     | (k, v) :: l => if f k v then for_all f l else false
     end.
 
-  Fixpoint exists_ (f : key -> A -> bool) (s : t A) : bool :=
-    match s with
+  Fixpoint exists_ (f : key -> A -> bool) (m : t A) : bool :=
+    match m with
     | nil => false
     | (k, v) :: l => if f k v then true else exists_ f l
     end.
 
-  Fixpoint partition (f : key -> A -> bool) (s : t A) : t A * t A :=
-    match s with
+  Fixpoint partition (f : key -> A -> bool) (m : t A) : t A * t A :=
+    match m with
     | nil => (nil, nil)
     | (k, v) :: l =>
         let (s1, s2) := partition f l in
         if f k v then ((k, v) :: s1, s2) else (s1, (k, v) :: s2)
     end.
 
-  Definition cardinal (s : t A) : nat := length s.
+  Definition cardinal (m : t A) : nat := length m.
 
-  Definition elements (s : t A) : list (key * A) := s.
+  Definition elements (m : t A) : list (key * A) := m.
 
-  Definition min_key (s : t A) : option key :=
-    match s with
+  Definition min_key (m : t A) : option key :=
+    match m with
     | nil => None
     | p :: _ => Some (fst p)
     end.
 
-  Fixpoint max_key (s : t A) : option key :=
-    match s with
+  Fixpoint max_key (m : t A) : option key :=
+    match m with
     | nil => None
     | p :: nil => Some (fst p)
     | _ :: l => max_key l
     end.
 
-  Definition choose (s : t A) := head s.
+  Definition choose (m : t A) := head m.
 
 (*
-  Fixpoint compare s s' :=
-   match s, s' with
+  Fixpoint compare m m' :=
+   match m, m' with
     | nil, nil => Eq
     | nil, _ => Lt
     | _, nil => Gt
-    | x::s, x'::s' =>
+    | x::m, x'::m' =>
       match X.compare x x' with
-       | Eq => compare s s'
+       | Eq => compare m m'
        | Lt => Lt
        | Gt => Gt
       end

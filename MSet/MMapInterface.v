@@ -27,9 +27,11 @@
     [RawSets] via the use of a subset type (see (W)Raw2Sets below).
 *)
 
+
 Require Export Bool SetoidList RelationClasses Morphisms
  RelationPairs Equalities Orders OrdersFacts.
 Set Implicit Arguments.
+
 Unset Strict Implicit.
 
 Module Type TypElt.
@@ -143,8 +145,10 @@ Module Type WMapsOn (E : DecidableType).
   Variable A : Type.
 
   (** Logical predicates *)
-  Parameter In : key -> t A -> Prop.
+
   Parameter MapsTo : key -> A -> t A -> Prop.
+  Definition In (k:key)(m: t A) : Prop := exists e:A, MapsTo k e m.
+
   (* TODO: *Shrug* *)
   Declare Instance In_compat : Proper (E.eq==>eq==>iff) In.
 

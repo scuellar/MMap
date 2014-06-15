@@ -250,12 +250,12 @@ Module Type HasOrdOps (Import T:TypElt).
   (** Total ordering between sets. Can be used as the ordering function
   for doing sets of sets. *)
 
-  Parameter min_key : t A -> option key.
+  Parameter min_elt : t A -> option (key * A).
   (** Return the smallest element of the given set
   (with respect to the [E.compare] ordering),
   or [None] if the set is empty. *)
 
-  Parameter max_key : t A -> option key.
+  Parameter max_elt : t A -> option (key * A).
   (** Same as [min_key], but returns the largest element of the
   given set. *)
   End Foo.

@@ -391,7 +391,7 @@ Module Type WRawMaps (E : DecidableType).
   Include WOps E.
 
   (** Is a set well-formed or ill-formed ? *)
-  Parameter IsOk : forall (A : Type), t A -> Prop.
+  Parameter IsOk : forall {A : Type}, t A -> Prop.
   Class Ok {A : Type} (s:t A) : Prop := ok : IsOk s.
 
   (** In order to be able to validate (at least some) particular sets as
@@ -684,37 +684,45 @@ Module WRaw2Maps (D:DecidableType)(M:WRawMaps D) <: WMaps with Module E := D.
 End WRaw2Maps.
 
 (** Same approach for ordered sets *)
-(*
-Module Type RawSets (E : OrderedType).
-  Include WRawSets E <+ HasOrdOps <+ HasLt <+ IsStrOrder.
+Module Type RawMaps (E : OrderedType).
+  (* TODO: We have no coparison on maps *)
+  (* Include WRawMaps E <+ HasOrdOps <+ HasLt <+ IsStrOrder. *)
+  Include WRawMaps E <+ HasOrdOps.
 
   Section Spec.
-  Variable s s': t.
-  Variable x y : key.
+  Variable A    : Type.
+  Variable m m' : t A.
+  Variable k k' : key.
+  Variable v v' : A.
 
+  (*
   (** Specification of [compare] *)
   Parameter compare_spec : forall `{Ok s, Ok s'}, CompSpec eq lt s s' (compare s s').
+  *)
 
   (** Additional specification of [elements] *)
-  Parameter elements_spec2 : forall `{Ok s}, sort E.lt (elements s).
+  Parameter elements_spec2 : forall `{Ok _ m}, 
+    sort (fun p1 p2 => E.lt (fst p1) (fst p2)) (elements m).
 
   (** Specification of [min_key] *)
-  Parameter min_key_spec1 : min_key s = Some x -> In x s.
-  Parameter min_key_spec2 : forall `{Ok s}, min_key s = Some x -> In y s -> ~ E.lt y x.
-  Parameter min_key_spec3 : min_key s = None -> Empty s.
+  Parameter min_elt_spec1 : min_elt m = Some (k, v) -> MapsTo k v m.
+  Parameter min_elt_spec2 : forall `{Ok _ m}, 
+    min_elt m = Some (k, v) -> In k' m -> ~ E.lt k' k.
+  Parameter min_elt_spec3 : min_elt m = None -> Empty m.
 
   (** Specification of [max_key] *)
-  Parameter max_key_spec1 : max_key s = Some x -> In x s.
-  Parameter max_key_spec2 : forall `{Ok s}, max_key s = Some x -> In y s -> ~ E.lt x y.
-  Parameter max_key_spec3 : max_key s = None -> Empty s.
+  Parameter max_elt_spec1 : max_elt m = Some (k, v) -> MapsTo k v m.
+  Parameter max_elt_spec2 : forall `{Ok _ m}, 
+    max_elt m = Some (k, v) -> In k' m -> ~ E.lt k k'.
+  Parameter max_elt_spec3 : max_elt m = None -> Empty m.
 
   (** Additional specification of [choose] *)
-  Parameter choose_spec3 : forall `{Ok s, Ok s'},
-    choose s = Some x -> choose s' = Some y -> Equal s s' -> E.eq x y.
+  Parameter choose_spec3 : forall `{Ok _ m, Ok _ m'},
+    choose m = Some (k, v) -> choose m' = Some (k', v') -> Equal m m' -> E.eq k k'.
 
   End Spec.
 
-End RawSets.
+End RawMaps.
 
 (** From Raw to usual sets *)
 

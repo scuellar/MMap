@@ -403,14 +403,15 @@ Module Type WRawMaps (E : DecidableType).
   Parameter MapsTo : key -> A -> t A -> Prop.
   Declare Instance In_compat : Proper (E.eq==>eq==>iff) In.
 
-  Definition Equal s s' := forall a : key, In a s <-> In a s'.
-  Definition Subset s s' := forall a : key, In a s -> In a s'.
+  Definition Equal m m' := forall k, @find A k m = find k m'.
+  Definition Equiv (eq_elt: A -> A -> Prop) m m' :=
+         (forall k, In k m <-> In k m') /\
+         (forall k e e', MapsTo k e m -> MapsTo k e' m' -> eq_elt e e').
+  Definition Equivb (cmp: A -> A -> bool) := Equiv (Cmp cmp).
+
   Definition Empty s := forall a : key, ~ In a s.
   Definition For_all (P : key -> A -> Prop) s := forall x a, MapsTo x a s -> P x a.
   Definition Exists (P : key -> A -> Prop) s := exists x a, MapsTo x a s /\ P x a.
-
-  Notation "s  [=]  t" := (Equal s t) (at level 70, no associativity).
-  Notation "s  [<=]  t" := (Subset s t) (at level 70, no associativity).
 
   Definition eq : t A -> t A -> Prop := Equal.
   Declare Instance eq_equiv : Equivalence eq.
@@ -440,13 +441,17 @@ Module Type WRawMaps (E : DecidableType).
   Notation compatb := (Proper (E.eq==>Logic.eq==>Logic.eq)) (only parsing).
 
   Parameter mem_spec : forall `{Ok s}, mem k s = true <-> In k' s.
-  Check empty.
-  (* TODO 
-  Parameter equal_spec : forall `{Ok s, Ok s'},
-    equal s s' = true <-> s[=]s'.
-  Parameter subset_spec : forall `{Ok s, Ok s'},
-    subset s s' = true <-> s[<=]s'.
-  *)
+
+ Section EqSpec.
+     Variable cmp : A -> A -> bool.
+     Parameter equal_1 : 
+       forall `{Ok s, Ok s'},
+       Equivb cmp s s' -> equal cmp s s' = true.
+     Parameter equal_2 :
+       forall `{Ok s, Ok s'},
+       equal cmp s s' = true -> Equivb cmp s s'.
+  End EqSpec.
+
   Parameter empty_spec : Empty (empty A).
   Parameter is_empty_spec : is_empty s = true <-> Empty s.
   Parameter add_spec : forall `{Ok s},
@@ -473,9 +478,9 @@ Module Type WRawMaps (E : DecidableType).
   Parameter exists_spec : compatb f ->
     (exists_ f s = true <-> Exists (fun x a => f x a = true) s).
   Parameter partition_spec1 : compatb f ->
-    fst (partition f s) [=] filter f s.
+    Equal (fst (partition f s)) (filter f s).
   Parameter partition_spec2 : compatb f ->
-    snd (partition f s) [=] filter (fun x a => negb (f x a)) s.
+    Equal (snd (partition f s)) (filter (fun x a => negb (f x a)) s).
   Parameter elements_spec1 : InA (fun p1 p2 => E.eq (fst p1) (fst p2) /\ snd p1 = snd p2) (k, v) (elements s) <-> MapsTo k v s.
   (** When compared with ordered sets, here comes the only
       property that is really weaker: *)
@@ -489,6 +494,7 @@ End WRawMaps.
 
 (** From weak raw sets to weak usual sets *)
 
+(*
 Module WRaw2SetsOn (E:DecidableType)(M:WRawSets E) <: WSetsOn E.
 
  (** We avoid creating induction principles for the Record *)

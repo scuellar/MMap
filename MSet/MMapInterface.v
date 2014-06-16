@@ -707,13 +707,13 @@ Module Type RawMaps (E : OrderedType).
   (** Specification of [min_key] *)
   Parameter min_elt_spec1 : min_elt m = Some (k, v) -> MapsTo k v m.
   Parameter min_elt_spec2 : forall `{Ok _ m}, 
-    min_elt m = Some (k, v) -> In k' m -> ~ E.lt k' k.
+    min_elt m = Some (k, v) -> MapsTo k' v' m -> ~ E.lt k' k.
   Parameter min_elt_spec3 : min_elt m = None -> Empty m.
 
   (** Specification of [max_key] *)
   Parameter max_elt_spec1 : max_elt m = Some (k, v) -> MapsTo k v m.
   Parameter max_elt_spec2 : forall `{Ok _ m}, 
-    max_elt m = Some (k, v) -> In k' m -> ~ E.lt k k'.
+    max_elt m = Some (k, v) -> MapsTo k' v' m -> ~ E.lt k k'.
   Parameter max_elt_spec3 : max_elt m = None -> Empty m.
 
   (** Additional specification of [choose] *)
@@ -724,24 +724,26 @@ Module Type RawMaps (E : OrderedType).
 
 End RawMaps.
 
-(*
 (** From Raw to usual sets *)
+Module Raw2MapsOn (O:OrderedType)(M:RawMaps O) <: MapsOn O.
+  Include WRaw2MapsOn O M.
 
-Module Raw2SetsOn (O:OrderedType)(M:RawSets O) <: SetsOn O.
-  Include WRaw2SetsOn O M.
+  (* TODO: We have no compare function *)
+  (* Definition compare {A : Type} (m m':t A) := M.compare m m'. *)
+  Definition min_elt {A : Type} (m:t A) : option (key * A) := M.min_elt m.
+  Definition max_elt {A : Type} (m:t A) : option (key * A) := M.max_elt m.
+  (* Definition lt {A : Type} (s s':t A) := M.lt s s'. *)
 
-  Definition compare (s s':t) := M.compare s s'.
-  Definition min_key (s:t) : option key := M.min_key s.
-  Definition max_key (s:t) : option key := M.max_key s.
-  Definition lt (s s':t) := M.lt s s'.
-
+  (*
   (** Specification of [lt] *)
   Instance lt_strorder : StrictOrder lt.
   Proof. constructor ; unfold lt; red.
     unfold complement. red. intros. apply (irreflexivity H).
     intros. transitivity y; auto.
   Qed.
+  *)
 
+  (*
   Instance lt_compat : Proper (eq==>eq==>iff) lt.
   Proof.
   repeat red. unfold eq, lt.
@@ -750,49 +752,54 @@ Module Raw2SetsOn (O:OrderedType)(M:RawSets O) <: SetsOn O.
   change (M.eq s1' s2') in E'.
   rewrite E,E'; intuition.
   Qed.
+  *)
 
   Section Spec.
-  Variable s s' s'' : t.
-  Variable x y : key.
+  Variable A : Type.
+  Variable m m' m'' : t A.
+  Variable k k' : key.
+  Variable v v' : A.
 
+  (*
   Lemma compare_spec : CompSpec eq lt s s' (compare s s').
   Proof. unfold compare; destruct (@M.compare_spec s s' _ _); auto. Qed.
+  *)
 
   (** Additional specification of [elements] *)
-  Lemma elements_spec2 : sort O.lt (elements s).
-  Proof. exact (@M.elements_spec2 _ _). Qed.
+  Lemma elements_spec2 : sort (fun p1 p2 => O.lt (fst p1) (fst p2)) (elements m).
+  Proof. exact (@M.elements_spec2 _ _ _). Qed.
 
-  (** Specification of [min_key] *)
-  Lemma min_key_spec1 : min_key s = Some x -> In x s.
-  Proof. exact (@M.min_key_spec1 _ _). Qed.
-  Lemma min_key_spec2 : min_key s = Some x -> In y s -> ~ O.lt y x.
-  Proof. exact (@M.min_key_spec2 _ _ _ _). Qed.
-  Lemma min_key_spec3 : min_key s = None -> Empty s.
-  Proof. exact (@M.min_key_spec3 _). Qed.
+  (** Specification of [min_elt] *)
+  Lemma min_elt_spec1 : min_elt m = Some (k, v) -> MapsTo k v m.
+  Proof. exact (@M.min_elt_spec1 _ _ _ _). Qed.
+  Lemma min_elt_spec2 : min_elt m = Some (k, v) -> MapsTo k' v' m -> ~ O.lt k' k.
+  Proof. exact (@M.min_elt_spec2 _ _ _ _ _ _ _). Qed.
+  Lemma min_elt_spec3 : min_elt m = None -> Empty m.
+  Proof. exact (@M.min_elt_spec3 _ _). Qed.
 
-  (** Specification of [max_key] *)
-  Lemma max_key_spec1 : max_key s = Some x -> In x s.
-  Proof. exact (@M.max_key_spec1 _ _). Qed.
-  Lemma max_key_spec2 : max_key s = Some x -> In y s -> ~ O.lt x y.
-  Proof. exact (@M.max_key_spec2 _ _ _ _). Qed.
-  Lemma max_key_spec3 : max_key s = None -> Empty s.
-  Proof. exact (@M.max_key_spec3 _). Qed.
+  (** Specification of [max_elt] *)
+  Lemma max_elt_spec1 : max_elt m = Some (k, v) -> MapsTo k v m.
+  Proof. exact (@M.max_elt_spec1 _ _ _ _). Qed.
+  Lemma max_elt_spec2 : max_elt m = Some (k, v) -> MapsTo k' v' m -> ~ O.lt k k'.
+  Proof. exact (@M.max_elt_spec2 _ _ _ _ _ _ _). Qed.
+  Lemma max_elt_spec3 : max_elt m = None -> Empty m.
+  Proof. exact (@M.max_elt_spec3 _ _). Qed.
 
   (** Additional specification of [choose] *)
   Lemma choose_spec3 :
-    choose s = Some x -> choose s' = Some y -> Equal s s' -> O.eq x y.
-  Proof. exact (@M.choose_spec3 _ _ _ _ _ _). Qed.
+    choose m = Some (k, v) -> choose m' = Some (k', v') -> Equal m m' -> O.eq k k'.
+  Proof. exact (@M.choose_spec3 _ _ _ _ _ _ _ _ _). Qed.
 
   End Spec.
 
-End Raw2SetsOn.
+End Raw2MapsOn.
 
-Module Raw2Sets (O:OrderedType)(M:RawSets O) <: Sets with Module E := O.
+Module Raw2Maps (O:OrderedType)(M:RawMaps O) <: Maps with Module E := O.
   Module E := O.
-  Include Raw2SetsOn O M.
-End Raw2Sets.
+  Include Raw2MapsOn O M.
+End Raw2Maps.
 
-
+(*
 (** It is in fact possible to provide an ordering on sets with
     very little information on them (more or less only the [In]
     predicate). This generic build of ordering is in fact not

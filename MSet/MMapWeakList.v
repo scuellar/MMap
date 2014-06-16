@@ -239,21 +239,27 @@ Module MakeRaw (X:DecidableType) <: WRawMaps X.
 
   Lemma isok_iff : forall l, Ok l <-> isok l = true.
   Proof.
-    (*
-  induction l.
-  intuition.
-  simpl.
-  rewrite andb_true_iff.
-  rewrite negb_true_iff.
-  rewrite <- IHl.
-  split; intros H. inv.
-  split; auto.
-  apply not_true_is_false. rewrite mem_spec; auto.
-  destruct H; constructors; auto.
-  rewrite <- mem_spec; auto; congruence.
-  Qed.
-     *)
-  Admitted.
+    intros.
+    induction l.
+    simpl. intuition. constructor.
+   
+    destruct a.
+    simpl.
+    rewrite andb_true_iff, negb_true_iff.
+    rewrite <- IHl.
+    split.
+    intro. inversion H. split.
+      apply not_true_is_false.
+      assert (Ok l). unfold Ok. assumption.
+      rewrite <- mem_spec in H2. assumption. assumption. assumption.
+
+    intro. inversion H. constructor.
+      intro contr.
+      rewrite <- mem_spec in contr.
+      rewrite H0 in contr. inversion contr.
+      assumption.
+      unfold Ok in H1. assumption.
+   Qed.
 
   Global Instance isok_Ok l : isok l = true -> Ok l | 10.
   Proof.

@@ -200,7 +200,15 @@ Module MakeRaw (X:DecidableType) <: WRawMaps X.
 
   Lemma MapsTo_compat : Proper (X.eq==>eq==>eq==>iff) MapsTo.
   Proof.
-  repeat red; intros. subst. (* rewrite H; auto.*) admit.
+  repeat red; intros. subst. unfold MapsTo.
+  split.
+  intro H1. induction H1. constructor. unfold Transitive in eqtrans.
+  apply eqtrans with (y := x). auto. auto.
+  constructor. assumption.
+
+  intro H1. induction H1. constructor. unfold Transitive in eqtrans.
+  apply eqtrans with (y := y). auto. auto.
+  constructor. assumption. 
   Qed.
 
   Lemma mem_spec : forall s x `{Ok s},

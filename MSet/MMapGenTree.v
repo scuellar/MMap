@@ -295,10 +295,16 @@ End Ops.
 Module Type Props (X:OrderedType)(Info:InfoTyp)(Import M:Ops X Info).
 
 (** ** Occurrence in a tree *)
-Variable A: Type.
-Variable val_eq: A -> A -> Prop.
-Hypothesis val_eq_ok: forall r, val_eq r r.
-Hint Resolve val_eq_ok.
+Variable A: Type. 
+Parameter val_eq: relation A.
+Hypothesis val_refl: forall v, val_eq v v.
+Hypothesis val_sym: forall v1 v2, val_eq v1 v2 -> val_eq v2 v1.
+Hypothesis val_trans: forall v1 v2 v3, val_eq v1 v2 -> val_eq v2 v3 -> val_eq v1 v3.
+Hint Immediate val_refl.
+Hint Resolve val_sym val_trans. 
+Instance val_equivalence: Equivalence val_eq. 
+apply Build_Equivalence; eauto.
+Defined.
 
 Inductive MapsToT (k1 : key) (v1: A) : tree A -> Prop :=
   | IsRoot : forall c l r k2 v2, X.eq k1 k2 -> val_eq v1 v2 -> MapsToT k1 v1 (Node A c l k2 v2 r)
@@ -385,8 +391,8 @@ Local Hint Unfold Ok.
 Ltac clear_inversion H := inversion H; clear H; subst.
 
 Ltac inv_ok := match goal with
- | H:Ok (Node _ _ _ _) |- _ => clear_inversion H; inv_ok
- | H:Ok Leaf |- _ => clear H; inv_ok
+ | H:Ok (Node _ _ _ _ _ _) |- _ => clear_inversion H; inv_ok
+ | H:Ok Leaf _ |- _ => clear H; inv_ok
  | H:bst ?x |- _ => change (Ok x) in H; inv_ok
  | _ => idtac
 end.
@@ -397,7 +403,9 @@ end.
 Ltac is_tree_constr c :=
   match c with
    | Leaf => idtac
-   | Node _ _ _ _ => idtac
+   | Leaf _ => idtac
+   | Node _ _ _ _ _ => idtac
+   | Node _ _ _ _ _ _ => idtac
    | _ => fail
   end.
 
@@ -416,10 +424,23 @@ Ltac intuition_in := repeat (intuition; inv).
 (** Helper tactic concerning order of elements. *)
 
 Ltac order := match goal with
- | U: lt_tree _ ?s, V: MapsToT _ _ ?s |- _ => generalize (U _ V); clear U; order
- | U: gt_tree _ ?s, V: MapsToT _ _ ?s |- _ => generalize (U _ V); clear U; order
+ | U: lt_tree _ ?s, V: MapsToT _ _ ?s |- _ => generalize (U _ _ V); clear U; order
+ | U: gt_tree _ ?s, V: MapsToT _ _ ?s |- _ => generalize (U _ _ V); clear U; order
  | _ => MX.order
 end.
+
+  Ltac construct_MTT tac :=
+   match goal with
+       | _ => eapply IsRoot; tac
+       | _ => eapply InLeft; tac
+       | _ => eapply InRight; tac
+   end.
+  Ltac solve_construct_MTT tac :=
+   match goal with
+       | _ => solve [eapply IsRoot; tac]
+       | _ => solve [eapply InLeft; tac]
+       | _ => solve [eapply InRight; tac]
+   end.
 
 
 (** [isok] is indeed a decision procedure for [Ok] *)
@@ -427,39 +448,41 @@ end.
 Lemma ltb_tree_iff : forall k t, lt_tree k t <-> ltb_tree k t = true.
 Proof.
   induction t as [|c l IHl k2 r IHr]; simpl.
- unfold lt_tree; intuition_in.
- Print MapsToT.
- inversion H0.
- elim_compare k k2.
- split; intros; try discriminate. 
- assert (X.lt k2 k) by (eapply H0; constructor; eauto). order.
- split; intros; try discriminate. 
- assert (X.lt k2 k) by (eapply H0; constructor; eauto). order.
- rewrite andb_true_iff, <- IHl, <- IHIHr.
+  unfold lt_tree; intuition_in.
+ elim_compare k k2;
+ try ( split; intros; try discriminate; 
+ assert (X.lt k2 k) by (eapply H0; constructor; eauto); order).
+ rewrite !andb_true_iff, <- IHl, <- IHIHr.
  split; intros.
+ unfold lt_tree; split; intros; eapply H0; intuition_in;
+ solve_construct_MTT eauto.
  
- unfold lt_tree in H0.
-  unfold lt_tree.
-  repeat(split; intros).
- intuition_in. order.
+ destruct H0.
+ unfold lt_tree; intros.
+ inversion H2; subst; try order.
 Qed.
 
-Lemma gtb_tree_iff : forall x s, gt_tree x s <-> gtb_tree x s = true.
+Lemma gtb_tree_iff : forall k t, gt_tree k t <-> gtb_tree k t = true.
 Proof.
- induction s as [|c l IHl y r IHr]; simpl.
- unfold gt_tree; intuition_in.
- elim_compare x y.
- split; intros; try discriminate. assert (X.lt x y) by auto. order.
- rewrite !andb_true_iff, <-IHl, <-IHr.
-  unfold gt_tree; intuition_in; order.
- split; intros; try discriminate. assert (X.lt x y) by auto. order.
+ induction t as [|c l IHl k2 r IHr]; simpl.
+ unfold gt_tree; intuition_in. 
+ elim_compare k k2; try
+ (split; intros; try discriminate; 
+ assert (X.lt k k2) by (eapply H0; constructor; eauto); order).
+ rewrite !andb_true_iff, <-IHl, <- IHIHr.
+ split; intros.
+ unfold gt_tree; split; intros; eapply H0; intuition_in;
+ solve_construct_MTT eauto.
+ destruct H0.
+ unfold gt_tree; intros. 
+ inversion H2; subst; try order.
 Qed.
 
 Lemma isok_iff : forall s, Ok s <-> isok s = true.
 Proof.
  induction s as [|c l IHl y r IHr]; simpl.
  intuition_in.
- rewrite !andb_true_iff, <- IHl, <-IHr, <- ltb_tree_iff, <- gtb_tree_iff.
+ rewrite !andb_true_iff, <- IHl, <-IHIHr, <- ltb_tree_iff, <- gtb_tree_iff.
  intuition_in.
 Qed.
 
@@ -467,84 +490,93 @@ Instance isok_Ok s : isok s = true -> Ok s | 10.
 Proof. intros; apply <- isok_iff; auto. Qed.
 
 (** ** Basic results about [In] *)
-
 Lemma In_1 :
- forall s x y, X.eq x y -> InT x s -> InT y s.
+ forall t k1 k2 v1 v2, X.eq k1 k2 -> val_eq v1 v2 -> MapsToT k1 v1 t -> MapsToT k2 v2 t.
 Proof.
- induction s; simpl; intuition_in; eauto.
+ induction t; simpl; intuition; intuition_in;
+ solve_construct_MTT eauto.
 Qed.
 Local Hint Immediate In_1.
 
-Instance In_compat : Proper (X.eq==>eq==>iff) InT.
+(* TODO: need this?*)
+Check MapsToT.
+Instance In_compat : Proper (X.eq==>val_eq==>eq==>iff) MapsToT.
 Proof.
 apply proper_sym_impl_iff_2; auto with *.
 repeat red; intros; subst. apply In_1 with x; auto.
-Qed.
+Qed.*)
 
 Lemma In_node_iff :
- forall c l x r y,
-  InT y (Node c l x r) <-> InT y l \/ X.eq y x \/ InT y r.
+ forall c l k1 v1 (r: tree A) k2 v2,
+  MapsToT k2 v2 (Node A c l k1 v1 r) <-> MapsToT k2 v2 l \/ (X.eq k2 k1 /\ val_eq v2 v1)  \/ MapsToT k2 v2 r.
 Proof.
  intuition_in.
 Qed.
 
-Lemma In_leaf_iff : forall x, InT x Leaf <-> False.
+Lemma In_leaf_iff : forall (k:key) (v:A), MapsToT k v (Leaf A) <-> False.
 Proof.
  intuition_in.
 Qed.
 
 (** Results about [lt_tree] and [gt_tree] *)
 
-Lemma lt_leaf : forall x : elt, lt_tree x Leaf.
+Lemma lt_leaf : forall k, lt_tree k (Leaf A).
 Proof.
  red; inversion 1.
 Qed.
 
-Lemma gt_leaf : forall x : elt, gt_tree x Leaf.
+Lemma gt_leaf : forall k : key, gt_tree k (Leaf A).
 Proof.
  red; inversion 1.
 Qed.
 
 Lemma lt_tree_node :
- forall (x y : elt) (l r : tree) (i : Info.t),
- lt_tree x l -> lt_tree x r -> X.lt y x -> lt_tree x (Node i l y r).
+ forall (k1 k2 : key) v (l r : tree A) (i : Info.t),
+ lt_tree k1 l -> lt_tree k1 r -> X.lt k2 k1 -> lt_tree k1 (Node A i l k2 v r).
 Proof.
- unfold lt_tree; intuition_in; order.
+ unfold lt_tree; intuition_in.
+ order.
+ eapply H; eauto.
+ eapply H0; eauto.
 Qed.
 
 Lemma gt_tree_node :
- forall (x y : elt) (l r : tree) (i : Info.t),
- gt_tree x l -> gt_tree x r -> X.lt x y -> gt_tree x (Node i l y r).
+ forall (k1 k2 : key) v (l r : tree A) (i : Info.t),
+ gt_tree k1 l -> gt_tree k1 r -> X.lt k1 k2 -> gt_tree k1 (Node A i l k2 v r).
 Proof.
- unfold gt_tree; intuition_in; order.
+ unfold gt_tree; intuition_in. 
+ order.
+ eapply H; eauto.
+ eapply H0; eauto.
 Qed.
 
 Local Hint Resolve lt_leaf gt_leaf lt_tree_node gt_tree_node.
 
 Lemma lt_tree_not_in :
- forall (x : elt) (t : tree), lt_tree x t -> ~ InT x t.
+ forall (k : key) v (t : tree A), lt_tree k t -> ~ MapsToT k v t.
 Proof.
  intros; intro; order.
 Qed.
 
 Lemma lt_tree_trans :
- forall x y, X.lt x y -> forall t, lt_tree x t -> lt_tree y t.
+ forall k1 k2, X.lt k1 k2 -> forall t, lt_tree k1 t -> lt_tree k2 t.
 Proof.
  eauto.
 Qed.
 
 Lemma gt_tree_not_in :
- forall (x : elt) (t : tree), gt_tree x t -> ~ InT x t.
+ forall (k : key) v (t : tree A), gt_tree k t -> ~ MapsToT k v t.
 Proof.
  intros; intro; order.
 Qed.
 
 Lemma gt_tree_trans :
- forall x y, X.lt y x -> forall t, gt_tree x t -> gt_tree y t.
+ forall k1 k2, X.lt k2 k1 -> forall t, gt_tree k1 t -> gt_tree k2 t.
 Proof.
  eauto.
 Qed.
 
+(* TODO:
 Instance lt_tree_compat : Proper (X.eq ==> Logic.eq ==> iff) lt_tree.
 Proof.
  apply proper_sym_impl_iff_2; auto.
@@ -555,53 +587,56 @@ Instance gt_tree_compat : Proper (X.eq ==> Logic.eq ==> iff) gt_tree.
 Proof.
  apply proper_sym_impl_iff_2; auto.
  intros x x' Hx s s' Hs H y Hy. subst. setoid_rewrite <- Hx; auto.
-Qed.
+Qed.*)
 
 Local Hint Resolve lt_tree_not_in lt_tree_trans gt_tree_not_in gt_tree_trans.
 
-Ltac induct s x :=
- induction s as [|i l IHl x' r IHr]; simpl; intros;
- [|elim_compare x x'; intros; inv].
+Ltac induct t k :=
+ induction t as [|i l IHl k' v' r IHr]; simpl; intros;
+ [|elim_compare k k'; intros; inv].
 
 Ltac auto_tc := auto with typeclass_instances.
 
 Ltac ok :=
  inv; change bst with Ok in *;
  match goal with
-   | |- Ok (Node _ _ _ _) => constructor; auto_tc; ok
-   | |- lt_tree _ (Node _ _ _ _) => apply lt_tree_node; ok
-   | |- gt_tree _ (Node _ _ _ _) => apply gt_tree_node; ok
+   | |- Ok (Node _ _ _ _ _ _) => constructor; auto_tc; ok
+   | |- lt_tree _ (Node _ _ _ _ _ _) => apply lt_tree_node; ok
+   | |- gt_tree _ (Node _ _ _ _ _ _) => apply gt_tree_node; ok
    | _ => eauto with typeclass_instances
  end.
 
 (** ** Empty set *)
 
-Lemma empty_spec : Empty empty.
+Lemma empty_spec : Empty (empty A).
 Proof.
- intros x H. inversion H.
+ intros k A H; inversion H.
 Qed.
 
-Instance empty_ok : Ok empty.
+Instance empty_ok : Ok (empty A).
 Proof.
  auto.
 Qed.
 
 (** ** Emptyness test *)
 
-Lemma is_empty_spec : forall s, is_empty s = true <-> Empty s.
+Lemma is_empty_spec : forall t, is_empty A t = true <-> Empty t.
 Proof.
- destruct s as [|c r x l]; simpl; auto.
- - split; auto. intros _ x H. inv.
- - split; auto. try discriminate. intro H; elim (H x); auto.
+ destruct t as [|c r k l]; simpl; auto.
+ - split; auto. intros _ k A H. inv.
+ - split; auto. try discriminate. intro H; eelim (H k); auto.
 Qed.
 
 (** ** Membership *)
 
-Lemma mem_spec : forall s x `{Ok s}, mem x s = true <-> InT x s.
+Lemma mem_spec : forall t k `{Ok t}, mem A k t = true <-> exists v, MapsToT k v t.
 Proof.
  split.
- - induct s x; now auto.
- - induct s x; intuition_in; order.
+ - induct t k. now auto.
+   exists v'; construct_MTT eauto.
+   apply IHl in H6; auto; destruct H6 as [v H6]; exists v; auto.
+   apply IHr in H8; auto; destruct H8 as [v H8]; exists v; auto.
+ - induct t k; intuition_in. order.
 Qed.
 
 (** ** Minimal and maximal elements *)

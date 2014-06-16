@@ -381,50 +381,51 @@ Module WS_WSfun (M' : WMaps) <: WMapsOn M'.E := M'.
 
 *)
 
-(*
-TODO: This seems to be tedious work below.
-
-Module Type WRawSets (E : DecidableType).
+Module Type WRawMaps (E : DecidableType).
   (** First, we ask for all the functions *)
   Include WOps E.
 
   (** Is a set well-formed or ill-formed ? *)
+  Variable A : Type.
 
-  Parameter IsOk : t -> Prop.
-  Class Ok (s:t) : Prop := ok : IsOk s.
+  Parameter IsOk : t A -> Prop.
+  Class Ok (s:t A) : Prop := ok : IsOk s.
 
   (** In order to be able to validate (at least some) particular sets as
       well-formed, we ask for a boolean function for (semi-)deciding
       predicate [Ok]. If [Ok] isn't decidable, [isok] may be the
       always-false function. *)
-  Parameter isok : t -> bool.
+  Parameter isok : t A -> bool.
   Declare Instance isok_Ok s `(isok s = true) : Ok s | 10.
 
   (** Logical predicates *)
-  Parameter In : key -> t -> Prop.
+  Parameter In : key -> t A -> Prop.
+  Parameter MapsTo : key -> A -> t A -> Prop.
   Declare Instance In_compat : Proper (E.eq==>eq==>iff) In.
 
   Definition Equal s s' := forall a : key, In a s <-> In a s'.
   Definition Subset s s' := forall a : key, In a s -> In a s'.
   Definition Empty s := forall a : key, ~ In a s.
-  Definition For_all (P : key -> Prop) s := forall x, In x s -> P x.
-  Definition Exists (P : key -> Prop) s := exists x, In x s /\ P x.
+  Definition For_all (P : key -> A -> Prop) s := forall x a, MapsTo x a s -> P x a.
+  Definition Exists (P : key -> A -> Prop) s := exists x a, MapsTo x a s /\ P x a.
 
   Notation "s  [=]  t" := (Equal s t) (at level 70, no associativity).
   Notation "s  [<=]  t" := (Subset s t) (at level 70, no associativity).
 
-  Definition eq : t -> t -> Prop := Equal.
+  Definition eq : t A -> t A -> Prop := Equal.
   Declare Instance eq_equiv : Equivalence eq.
 
   (** First, all operations are compatible with the well-formed predicate. *)
 
-  Declare Instance empty_ok : Ok empty.
-  Declare Instance add_ok s x `(Ok s) : Ok (add x s).
+  Declare Instance empty_ok : Ok (empty A).
+  Declare Instance add_ok s x a `(Ok s) : Ok (add x a s).
   Declare Instance remove_ok s x `(Ok s) : Ok (remove x s).
-  Declare Instance singleton_ok x : Ok (singleton x).
+  Declare Instance singleton_ok x a : Ok (singleton x a).
+  (* Set functionality not usefull in MAP
   Declare Instance union_ok s s' `(Ok s, Ok s') : Ok (union s s').
   Declare Instance inter_ok s s' `(Ok s, Ok s') : Ok (inter s s').
   Declare Instance diff_ok s s' `(Ok s, Ok s') : Ok (diff s s').
+  *)
   Declare Instance filter_ok s f `(Ok s) : Ok (filter f s).
   Declare Instance partition_ok1 s f `(Ok s) : Ok (fst (partition f s)).
   Declare Instance partition_ok2 s f `(Ok s) : Ok (snd (partition f s)).
@@ -432,51 +433,59 @@ Module Type WRawSets (E : DecidableType).
   (** Now, the specifications, with constraints on the input sets. *)
 
   Section Spec.
-  Variable s s': t.
-  Variable x y : key.
-  Variable f : key -> bool.
-  Notation compatb := (Proper (E.eq==>Logic.eq)) (only parsing).
+  Variable s s': t A.
+  Variable k k' : key.
+  Variable v : A.
+  Variable f : key -> A -> bool.
+  Notation compatb := (Proper (E.eq==>Logic.eq==>Logic.eq)) (only parsing).
 
-  Parameter mem_spec : forall `{Ok s}, mem x s = true <-> In x s.
+  Parameter mem_spec : forall `{Ok s}, mem k s = true <-> In k' s.
+  Check empty.
+  (* TODO 
   Parameter equal_spec : forall `{Ok s, Ok s'},
     equal s s' = true <-> s[=]s'.
   Parameter subset_spec : forall `{Ok s, Ok s'},
     subset s s' = true <-> s[<=]s'.
-  Parameter empty_spec : Empty empty.
+  *)
+  Parameter empty_spec : Empty (empty A).
   Parameter is_empty_spec : is_empty s = true <-> Empty s.
   Parameter add_spec : forall `{Ok s},
-    In y (add x s) <-> E.eq y x \/ In y s.
+    In k' (add k v s) <-> E.eq k' k \/ In k' s.
   Parameter remove_spec : forall `{Ok s},
-    In y (remove x s) <-> In y s /\ ~E.eq y x.
-  Parameter singleton_spec : In y (singleton x) <-> E.eq y x.
+    In k' (remove k s) <-> In k' s /\ ~E.eq k' k.
+  Parameter singleton_spec : In k' (singleton k v) <-> E.eq k' k.
+  (* TODO set operations nor usefull for maps 
   Parameter union_spec : forall `{Ok s, Ok s'},
     In x (union s s') <-> In x s \/ In x s'.
   Parameter inter_spec : forall `{Ok s, Ok s'},
     In x (inter s s') <-> In x s /\ In x s'.
   Parameter diff_spec : forall `{Ok s, Ok s'},
     In x (diff s s') <-> In x s /\ ~In x s'.
-  Parameter fold_spec : forall (A : Type) (i : A) (f : key -> A -> A),
-    fold f s i = fold_left (flip f) (elements s) i.
+  *)
+  Parameter fold_spec : forall (X : Type) (i : X) (f : key -> A -> X -> X),
+    fold f s i = fold_left (fun (x:X) (p:key*A) => f (fst p) (snd p) x ) (elements s) i.
   Parameter cardinal_spec : forall `{Ok s},
     cardinal s = length (elements s).
   Parameter filter_spec : compatb f ->
-    (In x (filter f s) <-> In x s /\ f x = true).
+    (MapsTo k v (filter f s) <-> MapsTo k v s /\ f k v = true).
   Parameter for_all_spec : compatb f ->
-    (for_all f s = true <-> For_all (fun x => f x = true) s).
+    (for_all f s = true <-> For_all (fun x a => f x a = true) s).
   Parameter exists_spec : compatb f ->
-    (exists_ f s = true <-> Exists (fun x => f x = true) s).
+    (exists_ f s = true <-> Exists (fun x a => f x a = true) s).
   Parameter partition_spec1 : compatb f ->
     fst (partition f s) [=] filter f s.
   Parameter partition_spec2 : compatb f ->
-    snd (partition f s) [=] filter (fun x => negb (f x)) s.
-  Parameter elements_spec1 : InA E.eq x (elements s) <-> In x s.
-  Parameter elements_spec2w : forall `{Ok s}, NoDupA E.eq (elements s).
-  Parameter choose_spec1 : choose s = Some x -> In x s.
+    snd (partition f s) [=] filter (fun x a => negb (f x a)) s.
+  Parameter elements_spec1 : InA (fun p1 p2 => E.eq (fst p1) (fst p2) /\ snd p1 = snd p2) (k, v) (elements s) <-> MapsTo k v s.
+  (** When compared with ordered sets, here comes the only
+      property that is really weaker: *)
+  Parameter elements_spec2w : NoDupA  (fun p1 p2 => E.eq (fst p1) (fst p2) /\ snd p1 = snd p2) (elements s).
+  Parameter choose_spec1 : choose s = Some (k,v) -> MapsTo k v s.
   Parameter choose_spec2 : choose s = None -> Empty s.
 
   End Spec.
 
-End WRawSets.
+End WRawMaps.
 
 (** From weak raw sets to weak usual sets *)
 

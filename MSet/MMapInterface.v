@@ -140,8 +140,14 @@ Module Type WMapsOn (E : DecidableType).
   (** Logical predicates *)
 
   Parameter MapsTo : key -> A -> t A -> Prop.
+  Declare Instance MapsTo_compat : Proper (E.eq==>eq==>eq==>iff) MapsTo.
+
   Definition In (k:key)(m: t A) : Prop := exists e:A, MapsTo k e m.
-  Declare Instance In_compat : Proper (E.eq==>eq==>iff) In.
+  Definition Empty m := forall k a, ~ MapsTo k a m.
+
+  Definition eq_key (p p':key*A) := E.eq (fst p) (fst p').
+  Definition eq_key_elt (p p':key*A) :=
+          E.eq (fst p) (fst p') /\ (snd p) = (snd p').
 
 
   (* TODO: Copy explanation from FMap *)
@@ -151,7 +157,6 @@ Module Type WMapsOn (E : DecidableType).
          (forall k e e', MapsTo k e m -> MapsTo k e' m' -> eq_elt e e').
   Definition Equivb (cmp: A -> A -> bool) := Equiv (Cmp cmp).
 
-  Definition Empty m := forall k a, ~ MapsTo k a m.
   Definition For_all (P : key -> A -> Prop) m := forall k a, MapsTo k a m -> P k a.
   Definition Exists (P : key -> A -> Prop) m := exists k a, MapsTo k a m /\ P k a.
 
@@ -215,10 +220,10 @@ Module Type WMapsOn (E : DecidableType).
   Parameter partition_spec2 : compatb f ->
     Equal (snd (partition f m)) (filter (fun k x => negb (f k x)) m).
   
-  Parameter elements_spec1 : InA (fun p1 p2 => E.eq (fst p1) (fst p2) /\ snd p1 = snd p2) (k, v) (elements m) <-> MapsTo k v m.
+  Parameter elements_spec1 : InA eq_key_elt (k, v) (elements m) <-> MapsTo k v m.
   (** When compared with ordered maps, here comes the only
       property that is really weaker: *)
-  Parameter elements_spec2w : NoDupA  (fun p1 p2 => E.eq (fst p1) (fst p2) /\ snd p1 = snd p2) (elements m).
+  Parameter elements_spec2w : NoDupA eq_key (elements m).
   Parameter choose_spec1 : choose m = Some (k,v) -> MapsTo k v m.
   Parameter choose_spec2 : choose m = None -> Empty m.
 
@@ -400,21 +405,30 @@ Module Type WRawMaps (E : DecidableType).
   Declare Instance isok_Ok s `(isok s = true) : Ok s | 10.
 
   (** Logical predicates *)
-  Parameter MapsTo : key -> A -> t A -> Prop.
-  Definition In (k:key)(m: t A) : Prop := exists e:A, MapsTo k e m.
-  Declare Instance In_compat : Proper (E.eq==>eq==>iff) In.
 
+  Parameter MapsTo : key -> A -> t A -> Prop.
+  Declare Instance MapsTo_compat : Proper (E.eq==>eq==>eq==>iff) MapsTo.
+
+  Definition In (k:key)(m: t A) : Prop := exists e:A, MapsTo k e m.
+  Definition Empty m := forall k a, ~ MapsTo k a m.
+
+  Definition eq_key (p p':key*A) := E.eq (fst p) (fst p').
+  Definition eq_key_elt (p p':key*A) :=
+          E.eq (fst p) (fst p') /\ (snd p) = (snd p').
+
+
+  (* TODO: Copy explanation from FMap *)
   Definition Equal m m' := forall k, @find A k m = find k m'.
   Definition Equiv (eq_elt: A -> A -> Prop) m m' :=
          (forall k, In k m <-> In k m') /\
          (forall k e e', MapsTo k e m -> MapsTo k e' m' -> eq_elt e e').
   Definition Equivb (cmp: A -> A -> bool) := Equiv (Cmp cmp).
 
-  Definition Empty s := forall a : key, ~ In a s.
-  Definition For_all (P : key -> A -> Prop) s := forall x a, MapsTo x a s -> P x a.
-  Definition Exists (P : key -> A -> Prop) s := exists x a, MapsTo x a s /\ P x a.
+  Definition For_all (P : key -> A -> Prop) m := forall k a, MapsTo k a m -> P k a.
+  Definition Exists (P : key -> A -> Prop) m := exists k a, MapsTo k a m /\ P k a.
 
   Definition eq : t A -> t A -> Prop := Equal.
+ 
   Declare Instance eq_equiv : Equivalence eq.
 
   (** First, all operations are compatible with the well-formed predicate. *)
@@ -484,10 +498,10 @@ Module Type WRawMaps (E : DecidableType).
     Equal (fst (partition f s)) (filter f s).
   Parameter partition_spec2 : compatb f ->
     Equal (snd (partition f s)) (filter (fun x a => negb (f x a)) s).
-  Parameter elements_spec1 : InA (fun p1 p2 => E.eq (fst p1) (fst p2) /\ snd p1 = snd p2) (k, v) (elements s) <-> MapsTo k v s.
+  Parameter elements_spec1 : InA eq_key_elt (k, v) (elements s) <-> MapsTo k v s.
   (** When compared with ordered sets, here comes the only
       property that is really weaker: *)
-  Parameter elements_spec2w : NoDupA  (fun p1 p2 => E.eq (fst p1) (fst p2) /\ snd p1 = snd p2) (elements s).
+  Parameter elements_spec2w : NoDupA  eq_key (elements s).
   Parameter choose_spec1 : choose s = Some (k,v) -> MapsTo k v s.
   Parameter choose_spec2 : choose s = None -> Empty s.
 

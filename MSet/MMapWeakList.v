@@ -142,7 +142,26 @@ Module MakeRaw (X:DecidableType) <: WRawMaps X.
   | MapsTo_cons_tl : forall k v' l, MapsToA x v l -> MapsToA x v ((k,v') :: l).
 
   Definition MapsTo := MapsToA.
-  Definition In (k:key) (m: t A) : Prop := exists e:A, MapsTo k e m.
+
+  Definition In (k:key)(m: t A) : Prop := exists e:A, MapsTo k e m.
+  Definition Empty m := forall k a, ~ MapsTo k a m.
+
+  Definition eq_key (p p':key*A) := X.eq (fst p) (fst p').
+  Definition eq_key_elt (p p':key*A) :=
+          X.eq (fst p) (fst p') /\ (snd p) = (snd p').
+
+
+  (* TODO: Copy explanation from FMap *)
+  Definition Equal m m' := forall k, @find A k m = find k m'.
+  Definition Equiv (eq_elt: A -> A -> Prop) m m' :=
+         (forall k, In k m <-> In k m') /\
+         (forall k e e', MapsTo k e m -> MapsTo k e' m' -> eq_elt e e').
+  Definition Equivb (cmp: A -> A -> bool) := Equiv (Cmp cmp).
+
+  Definition For_all (P : key -> A -> Prop) m := forall k a, MapsTo k a m -> P k a.
+  Definition Exists (P : key -> A -> Prop) m := exists k a, MapsTo k a m /\ P k a.
+
+
   Inductive NoDup : t A -> Prop :=
   | NoDup_nil : NoDup nil
   | NoDup_cons : forall x v l, ~ In x l -> NoDup l -> NoDup ((x,v)::l).
@@ -178,18 +197,8 @@ Module MakeRaw (X:DecidableType) <: WRawMaps X.
    | (x,v)::l => negb (@mem A x l) && isok l
   end.
 
-  Definition Equal m m' := forall k, @find A k m = find k m'.
-  Definition Equiv (eq_elt: A -> A -> Prop) m m' :=
-         (forall k, In k m <-> In k m') /\
-         (forall k e e', MapsTo k e m -> MapsTo k e' m' -> eq_elt e e').
-  Definition Equivb (cmp: A -> A -> bool) := Equiv (Cmp cmp).
 
-  Definition Empty s := forall a : key, ~ In a s.
-  Definition For_all (P : key -> A -> Prop) s := forall x a, MapsTo x a s -> P x a.
-  Definition Exists (P : key -> A -> Prop) s := exists x a, MapsTo x a s /\ P x a.
-
-
-  Lemma In_compat : Proper (X.eq==>eq==>iff) In.
+  Lemma MapsTo_compat : Proper (X.eq==>eq==>eq==>iff) MapsTo.
   Proof.
   repeat red; intros. subst. (* rewrite H; auto.*) admit.
   Qed.
@@ -335,17 +344,17 @@ Module MakeRaw (X:DecidableType) <: WRawMaps X.
   Lemma empty_spec : Empty (empty A).
   Proof.
   unfold Empty, empty; red; intros; inv.
-  unfold In in H. inversion H. inversion H0.
+  unfold In in H. inversion H.
   Qed.
 
   Lemma is_empty_spec : forall s : t A, is_empty s = true <-> Empty s.
   Proof.
   unfold Empty; destruct s; simpl; split; intros; auto.
-  intro; inv. unfold In in H. inversion H. inversion H0. inversion H1. inversion H.
+  intro; inv. unfold In in H. inversion H. inversion H0. inversion H.
   assert (In (fst p) (p :: s)).
     destruct p.  unfold In. exists a. constructor.
     auto.
-  apply H in H0. inversion H0.
+  unfold In in H0. inversion H0. apply H in H1. inversion H1.
   Qed.
 
   (*
@@ -672,11 +681,11 @@ Module MakeRaw (X:DecidableType) <: WRawMaps X.
 *)
 
   Lemma elements_spec1 : forall s k v,
-    InA (fun p1 p2 => X.eq (fst p1) (fst p2) /\ snd p1 = snd p2) (k, v) (elements s) <-> MapsTo k v s.
+    InA eq_key_elt (k, v) (elements s) <-> MapsTo k v s.
   Admitted.
 
   Lemma elements_spec2w : forall s,
-     NoDupA  (fun p1 p2 => X.eq (fst p1) (fst p2) /\ snd p1 = snd p2) (@elements A s).
+     NoDupA eq_key (@elements A s).
   Admitted.
 
   Lemma choose_spec1 : forall s k v,

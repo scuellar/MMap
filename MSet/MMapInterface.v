@@ -323,7 +323,7 @@ Module Type Maps.
   Include MapsOn E.
 End Maps.
 
-Module Type M := Maps.
+Module Type S := Maps.
 
 
 (** ** Some subtyping tests

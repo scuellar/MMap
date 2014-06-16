@@ -385,6 +385,7 @@ Module Type WRawMaps (E : DecidableType).
   (** First, we ask for all the functions *)
   Include WOps E.
 
+  Section Foo.
   (** Is a set well-formed or ill-formed ? *)
   Variable A : Type.
 
@@ -399,8 +400,8 @@ Module Type WRawMaps (E : DecidableType).
   Declare Instance isok_Ok s `(isok s = true) : Ok s | 10.
 
   (** Logical predicates *)
-  Parameter In : key -> t A -> Prop.
   Parameter MapsTo : key -> A -> t A -> Prop.
+  Definition In (k:key)(m: t A) : Prop := exists e:A, MapsTo k e m.
   Declare Instance In_compat : Proper (E.eq==>eq==>iff) In.
 
   Definition Equal m m' := forall k, @find A k m = find k m'.
@@ -436,11 +437,11 @@ Module Type WRawMaps (E : DecidableType).
   Section Spec.
   Variable s s': t A.
   Variable k k' : key.
-  Variable v : A.
+  Variable v v' : A.
   Variable f : key -> A -> bool.
   Notation compatb := (Proper (E.eq==>Logic.eq==>Logic.eq)) (only parsing).
 
-  Parameter mem_spec : forall `{Ok s}, mem k s = true <-> In k' s.
+  Parameter mem_spec : forall `{Ok s}, mem k s = true <-> In k s.
 
  Section EqSpec.
      Variable cmp : A -> A -> bool.
@@ -454,11 +455,13 @@ Module Type WRawMaps (E : DecidableType).
 
   Parameter empty_spec : Empty (empty A).
   Parameter is_empty_spec : is_empty s = true <-> Empty s.
-  Parameter add_spec : forall `{Ok s},
-    In k' (add k v s) <-> E.eq k' k \/ In k' s.
+  Parameter add_spec1: forall `{Ok s},
+     E.eq k k' -> MapsTo k v (add k' v s).
+  Parameter add_spec2: forall `{Ok s},
+     ~ E.eq k k' -> (MapsTo k v (add k' v' s) <-> MapsTo k v s).
   Parameter remove_spec : forall `{Ok s},
     In k' (remove k s) <-> In k' s /\ ~E.eq k' k.
-  Parameter singleton_spec : In k' (singleton k v) <-> E.eq k' k.
+  Parameter singleton_spec :  E.eq k k' <-> MapsTo k v (singleton k' v).
   (* TODO set operations nor usefull for maps 
   Parameter union_spec : forall `{Ok s, Ok s'},
     In x (union s s') <-> In x s \/ In x s'.
@@ -489,6 +492,7 @@ Module Type WRawMaps (E : DecidableType).
   Parameter choose_spec2 : choose s = None -> Empty s.
 
   End Spec.
+  End Foo. 
 
 End WRawMaps.
 

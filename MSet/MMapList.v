@@ -245,7 +245,8 @@ Module MakeRaw (X: OrderedType) <: RawMaps X.
    end.
 
   Notation Sort l := (isok l = true).
-  Notation Inf k l := (lelistA X.lt k (map (@fst X.t A) l)).
+  Notation Keys l := (map (@fst X.t A) l).
+  Notation Inf k l := (lelistA X.lt k (Keys l)).
   Notation In := (InA X.eq).
 
   Existing Instance X.eq_equiv.
@@ -278,22 +279,30 @@ Module MakeRaw (X: OrderedType) <: RawMaps X.
     constructor; assumption.
   Qed.
 
-  Lemma isok_iff : forall l, sort X.lt l <-> Ok l.
+  Lemma isok_iff : forall l, sort X.lt (Keys l) <-> Ok l.
   Proof.
     intro l; split; intro H.
     (* -> *)
-    elim H.
-      constructor; fail.
-    intros y ys Ha Hb Hc.
-    change (inf y ys && isok ys = true).
-    rewrite inf_iff in Hc.
-    rewrite andb_true_iff; tauto.
+    induction l as [|(k,v) ls].
+    reflexivity.
+    simpl.
+    unfold Ok.
+    simpl in *.
+    apply Sorted_inv in H.
+    rewrite -> inf_iff in H.
+    intuition.
     (* <- *)
-    induction l as [|x xs].
-      constructor.
-    change (inf x xs && isok xs = true) in H.
-    rewrite andb_true_iff, <- inf_iff in H.
-    destruct H; constructor; tauto.
+    unfold Ok in H.
+    induction l as [|(k,v) ls].
+    apply Sorted_nil.
+    simpl in *.
+    apply Sorted_cons.
+    apply andb_prop in H.
+    intuition.
+    apply andb_prop in H.
+    intuition.
+    apply inf_iff.
+    apply H0.
   Qed.
 
   Hint Extern 1 (Ok _) => rewrite <- isok_iff.

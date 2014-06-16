@@ -724,6 +724,7 @@ Module Type RawMaps (E : OrderedType).
 
 End RawMaps.
 
+(*
 (** From Raw to usual sets *)
 
 Module Raw2SetsOn (O:OrderedType)(M:RawSets O) <: SetsOn O.

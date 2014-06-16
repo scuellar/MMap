@@ -499,10 +499,10 @@ Qed.
 Local Hint Immediate In_1.
 
 (* TODO: need this?*)
-Check MapsToT.
-Instance In_compat : Proper (X.eq==>val_eq==>eq==>iff) MapsToT.
+(*Instance In_compat : Proper (X.eq==>val_eq==>eq==>iff) MapsToT.
 Proof.
-apply proper_sym_impl_iff_2; auto with *.
+Search Proper.
+apply proper_sym_impl_iff_2. auto with *.
 repeat red; intros; subst. apply In_1 with x; auto.
 Qed.*)
 
@@ -636,7 +636,12 @@ Proof.
    exists v'; construct_MTT eauto.
    apply IHl in H6; auto; destruct H6 as [v H6]; exists v; auto.
    apply IHr in H8; auto; destruct H8 as [v H8]; exists v; auto.
- - induct t k; intuition_in. order.
+ - induct t k; destruct H0 as [v H0]; auto.
+   intuition_in.
+   apply IHl; auto; econstructor;
+   inversion H0; eauto; order.
+   apply IHr; auto; econstructor;
+   inversion H0; eauto; order.
 Qed.
 
 (** ** Minimal and maximal elements *)
@@ -644,97 +649,97 @@ Qed.
 Functional Scheme min_elt_ind := Induction for min_elt Sort Prop.
 Functional Scheme max_elt_ind := Induction for max_elt Sort Prop.
 
-Lemma min_elt_spec1 s x : min_elt s = Some x -> InT x s.
+
+Lemma min_elt_spec1 t k : forall v, min_elt A t = Some (k, v) -> MapsToT k v t.
 Proof.
- functional induction (min_elt s); auto; inversion 1; auto.
+ functional induction (min_elt A t); auto; inversion 1; auto.
 Qed.
 
-Lemma min_elt_spec2 s x y `{Ok s} :
- min_elt s = Some x -> InT y s -> ~ X.lt y x.
+Lemma min_elt_spec2 t k1 k2 `{Ok t} : forall v1 v2,
+ min_elt A t = Some (k1, v1) -> MapsToT k2 v2 t -> ~ X.lt k2 k1.
 Proof.
- revert y.
- functional induction (min_elt s);
+ revert k2.
+ functional induction (min_elt _ t);
  try rename _x0 into r; try rename _x2 into l1, _x3 into x1, _x4 into r1.
  - discriminate.
- - intros y V W.
+ - intros k2 type1 type2 V W.
    inversion V; clear V; subst.
    inv; order.
- - intros; inv; auto.
-   * assert (X.lt x x0) by (apply H8; apply min_elt_spec1; auto).
-     order.
-   * assert (X.lt x1 x0) by auto.
-     assert (~X.lt x1 x) by auto.
+ - intros; inv; eauto.
+   * assert (X.lt k1 k) by (eapply H9; apply min_elt_spec1; eauto). order.
+   * assert (X.lt x1 k) by eauto.
+     assert (~X.lt x1 k1) by eauto.
      order.
 Qed.
 
-Lemma min_elt_spec3 s : min_elt s = None -> Empty s.
+Lemma min_elt_spec3 t : min_elt A t = None -> Empty t.
 Proof.
- functional induction (min_elt s).
+ functional induction (min_elt _ t).
  red; red; inversion 2.
  inversion 1.
  intro H0.
- destruct (IHo H0 _x3); auto.
+ edestruct (IHo H0 _x3); auto.
 Qed.
 
-Lemma max_elt_spec1 s x : max_elt s = Some x -> InT x s.
+Lemma max_elt_spec1 t k : forall v, max_elt A t = Some (k, v) -> MapsToT k v t.
 Proof.
- functional induction (max_elt s); auto; inversion 1; auto.
+ functional induction (max_elt _ t); auto; inversion 1; auto.
 Qed.
 
-Lemma max_elt_spec2 s x y `{Ok s} :
- max_elt s = Some x -> InT y s -> ~ X.lt x y.
+Lemma max_elt_spec2 t k1 k2 `{Ok t} : forall v1 v2,
+ max_elt A t = Some (k1, v1) -> MapsToT k2 v2 t -> ~ X.lt k1 k2.
 Proof.
- revert y.
- functional induction (max_elt s);
+ revert k2.
+ functional induction (max_elt _ t);
  try rename _x0 into r; try rename _x2 into l1, _x3 into x1, _x4 into r1.
  - discriminate.
- - intros y V W.
+ - intros y T T' V W.
    inversion V; clear V; subst.
    inv; order.
- - intros; inv; auto.
-   * assert (X.lt x0 x) by (apply H9; apply max_elt_spec1; auto).
+ - intros; inv; eauto.
+   * assert (X.lt k k1) by (eapply H10; apply max_elt_spec1; eauto).
      order.
-   * assert (X.lt x0 x1) by auto.
-     assert (~X.lt x x1) by auto.
+   * assert (X.lt k x1) by eauto.
+     assert (~X.lt k1 x1) by eauto.
      order.
 Qed.
 
-Lemma max_elt_spec3 s : max_elt s = None -> Empty s.
+Lemma max_elt_spec3 t : max_elt A t = None -> Empty t.
 Proof.
- functional induction (max_elt s).
+ functional induction (max_elt _ t).
  red; red; inversion 2.
  inversion 1.
  intro H0.
- destruct (IHo H0 _x3); auto.
+ edestruct (IHo H0 _x3); auto.
 Qed.
 
-Lemma choose_spec1 : forall s x, choose s = Some x -> InT x s.
+Lemma choose_spec1 : forall t k, forall v, choose _ t = Some (k, v) -> MapsToT k v t.
 Proof.
  exact min_elt_spec1.
 Qed.
 
-Lemma choose_spec2 : forall s, choose s = None -> Empty s.
+Lemma choose_spec2 : forall t, choose _ t = None -> Empty t.
 Proof.
  exact min_elt_spec3.
 Qed.
 
-Lemma choose_spec3 : forall s s' x x' `{Ok s, Ok s'},
-  choose s = Some x -> choose s' = Some x' ->
-  Equal s s' -> X.eq x x'.
+Lemma choose_spec3 : forall t t' k k' `{Ok t, Ok t'}, forall v v',
+  choose A t = Some (k,v) -> choose A t' = Some (k',v') ->
+  Equal t t' -> X.eq k k'.
 Proof.
- unfold choose, Equal; intros s s' x x' Hb Hb' Hx Hx' H.
- assert (~X.lt x x').
-  apply min_elt_spec2 with s'; auto.
-  rewrite <-H; auto using min_elt_spec1.
- assert (~X.lt x' x).
-  apply min_elt_spec2 with s; auto.
+ unfold choose, Equal; intros t t' k k' Hb Hb' v v' Hk Hk' H.
+ assert (~X.lt k k').
+  apply min_elt_spec2 with t' v' v; auto. 
+  rewrite <- H; auto using min_elt_spec1.
+ assert (~X.lt k' k).
+  apply min_elt_spec2 with t v v'; auto.
   rewrite H; auto using min_elt_spec1.
- elim_compare x x'; intuition.
+ elim_compare k k'; intuition.
 Qed.
 
 (** ** Elements *)
 
-Lemma elements_spec1' : forall s acc x,
+Lemma elements_spec1' : forall t acc k,
  InA X.eq x (elements_aux acc s) <-> InT x s \/ InA X.eq x acc.
 Proof.
  induction s as [ | c l Hl x r Hr ]; simpl; auto.

@@ -290,11 +290,18 @@ Module MakeRaw (X:DecidableType) <: WRawMaps X.
   *)
   Admitted.
 
+
+  Lemma remove_spec1: forall s k k' `{Ok s},
+    X.eq k k' -> ~ In k (remove k' s).
+   Admitted.
+
+  Lemma remove_spec2: forall s k k' v `{Ok s},
+    ~ X.eq k k' -> MapsTo k' v (remove k s) <-> MapsTo k' v s.
+   Admitted.
+  (*
   Lemma remove_spec :
    forall (s : t A) (x y : key) {Hs : Ok s},
      In y (remove x s) <-> In y s /\ ~X.eq y x.
-  Admitted.
-  (*
   Proof.
   induction s; simpl; intros.
   intuition; inv; auto.
@@ -712,4 +719,3 @@ Module Make (X: DecidableType) <: WMaps with Module E := X.
  Module Raw := MakeRaw X.
  Include WRaw2Maps X Raw.
 End Make.
-

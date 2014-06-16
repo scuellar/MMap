@@ -173,14 +173,9 @@ Module MakeRaw (X:DecidableType) <: WRawMaps X.
   Ltac inv := invlist InA; inv_ok.
   Ltac constructors := repeat constructor.
 
-  Fixpoint memA (x : key) (l : t A) := match l with
-   | nil => false
-   | (k,v)::l => if X.eq_dec x k then true else memA x l
-  end.
-
   Fixpoint isok l := match l with
    | nil => true
-   | (x,v)::l => negb (memA x l) && isok l
+   | (x,v)::l => negb (@mem A x l) && isok l
   end.
 
   Definition Equal m m' := forall k, @find A k m = find k m'.
@@ -202,22 +197,28 @@ Module MakeRaw (X:DecidableType) <: WRawMaps X.
   Lemma mem_spec : forall s x `{Ok s},
    mem x s = true <-> In x s.
   Proof.
-  (*
-  intros. induction H.
-  split; intros; inv. discriminate. inversion H. inversion H0.
+  intros.
+  split.
+  intro.
+  induction s.
+  inversion H0.
+  destruct a.
+  simpl in H0.
+  destruct (X.eq_dec x k).
+  exists a. constructor. assumption.
+  assert (In x s).
+    apply IHs. unfold Ok. inversion H. assumption. assumption.
+  inversion H1. exists x0. constructor. assumption.
 
-  split; intros; inv; auto.
-  *)
-
-  (*
-  induction s; intros.
-  split; intros; inv. discriminate.
-  simpl; destruct (X.eq_dec x a); split; intros; inv; auto.
-  right; rewrite <- IHs; auto.
-  rewrite IHs; auto.
+  intro.
+  induction H0.
+  induction H0.
+  simpl.
+  destruct (X.eq_dec x k). reflexivity. apply n in H0. inversion H0.
+  simpl.
+  destruct (X.eq_dec x k). reflexivity. apply IHMapsToA. unfold Ok. inversion H. assumption.
   Qed.
-  *)
-  Admitted.
+
 
   Lemma isok_iff : forall l, Ok l <-> isok l = true.
   Proof.

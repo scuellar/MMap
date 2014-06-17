@@ -478,7 +478,8 @@ Module MakeRaw (X:DecidableType) <: WRawMaps X.
 
   Lemma fold_spec : forall s (X : Type) (i : X) (f : key -> A -> X -> X),
     fold f s i = fold_left (fun (x:X) (p:key*A) => f (fst p) (snd p) x ) (elements s) i.
-  Admitted.                          
+    intros; reflexivity.
+  Qed.
 
   (*
   Lemma fold_spec :

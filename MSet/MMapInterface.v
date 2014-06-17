@@ -161,11 +161,16 @@ Module Type WMapsOn (E : DecidableType).
   Definition Exists (P : key -> A -> Prop) m := exists k a, MapsTo k a m /\ P k a.
 
   Definition eq : t A -> t A -> Prop := Equal.
- 
-  (*
-  Include IsEq. (** [eq] is obviously an equivalence, for subtyping only *)
-  Include HasEqDec.
-  *)
+
+  (* Including IsEq and HasEqDec more hassle than it's worth:
+     can't instantiate these higher-order module types w/ "yourself",
+     since [t] has wrong type ([Type -> Type] instead of [Type]), and
+     creating a new module type parametrized by A -- how exactly
+     would we make that work, even? -- is just not worth the work.
+
+     Contents copied outright instead *)
+  Global Declare Instance eq_equiv : Equivalence eq.
+  Parameter eq_dec : forall x y : t A, { eq x y } + { ~ eq x y }.
 
   (** Specifications of map operators *)
 

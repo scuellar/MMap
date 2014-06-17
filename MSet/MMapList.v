@@ -219,8 +219,9 @@ Module Ops (X:OrderedType) <: WOps X.
   End Foo.
 End Ops.
 
-(*
+
 Module MakeRaw (X: OrderedType) <: RawMaps X.
+
   Module Import MX := OrderedTypeFacts X.
   Module Import ML := OrderedTypeLists X.
 
@@ -229,21 +230,23 @@ Module MakeRaw (X: OrderedType) <: RawMaps X.
   (** ** Proofs of set operation specifications. *)
 
   Section ForNotations.
+  Variable A : Type.
 
-  Definition inf x l :=
+  Definition inf k (l : t A) :=
    match l with
    | nil => true
-   | y::_ => match X.compare x y with Lt => true | _ => false end
+   | (k', v) :: _ => match X.compare k k' with Lt => true | _ => false end
    end.
 
   Fixpoint isok l :=
    match l with
    | nil => true
-   | x::l => inf x l && isok l
+   | (k, v) :: l => inf k l && isok l
    end.
 
   Notation Sort l := (isok l = true).
-  Notation Inf := (lelistA X.lt).
+  Notation Keys l := (map (@fst X.t A) l).
+  Notation Inf k l := (lelistA X.lt k (Keys l)).
   Notation In := (InA X.eq).
 
   Existing Instance X.eq_equiv.
@@ -251,45 +254,55 @@ Module MakeRaw (X: OrderedType) <: RawMaps X.
 
   Definition IsOk s := Sort s.
 
-  Class Ok (s:t) : Prop := ok : Sort s.
+  Class Ok (s:t A) : Prop := ok : Sort s.
 
   Hint Resolve ok.
   Hint Unfold Ok.
 
   Instance Sort_Ok s `(Hs : Sort s) : Ok s := { ok := Hs }.
 
-  Lemma inf_iff : forall x l, Inf x l <-> inf x l = true.
+  Lemma inf_iff : forall k (l : t A), Inf k l <-> inf k l = true.
   Proof.
-    intros x l; split; intro H.
+    intros k l; split; intro H.
     (* -> *)
-    destruct H; simpl in *.
-      reflexivity.
-    rewrite <- compare_lt_iff in H; rewrite H; reflexivity.
+    induction l as [|(k',v) ls].
+    reflexivity.
+    simpl in *.
+    apply HdRel_inv in H.
+    rewrite <- compare_lt_iff in H. rewrite H; reflexivity.
     (* <- *)
-    destruct l as [|y ys]; simpl in *.
+    destruct l as [|(k',v) ys]; simpl in *.
       constructor; fail.
-    revert H; case_eq (X.compare x y); try discriminate; [].
+    revert H; case_eq (X.compare k k'); try discriminate; [].
     intros Ha _.
     rewrite compare_lt_iff in Ha.
     constructor; assumption.
   Qed.
 
-  Lemma isok_iff : forall l, sort X.lt l <-> Ok l.
+  Lemma isok_iff : forall l, sort X.lt (Keys l) <-> Ok l.
   Proof.
     intro l; split; intro H.
     (* -> *)
-    elim H.
-      constructor; fail.
-    intros y ys Ha Hb Hc.
-    change (inf y ys && isok ys = true).
-    rewrite inf_iff in Hc.
-    rewrite andb_true_iff; tauto.
+    induction l as [|(k,v) ls].
+    reflexivity.
+    simpl.
+    unfold Ok.
+    simpl in *.
+    apply Sorted_inv in H.
+    rewrite -> inf_iff in H.
+    intuition.
     (* <- *)
-    induction l as [|x xs].
-      constructor.
-    change (inf x xs && isok xs = true) in H.
-    rewrite andb_true_iff, <- inf_iff in H.
-    destruct H; constructor; tauto.
+    unfold Ok in H.
+    induction l as [|(k,v) ls].
+    apply Sorted_nil.
+    simpl in *.
+    apply Sorted_cons.
+    apply andb_prop in H.
+    intuition.
+    apply andb_prop in H.
+    intuition.
+    apply inf_iff.
+    apply H0.
   Qed.
 
   Hint Extern 1 (Ok _) => rewrite <- isok_iff.
@@ -862,7 +875,7 @@ Module Make (X: OrderedType) <: M with Module E := X.
  Module Raw := MakeRaw X.
  Include Raw2Sets X Raw.
 End Make.
-*)
+
 
 (** For this specific implementation, eq coincides with Leibniz equality *)
 

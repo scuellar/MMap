@@ -161,11 +161,16 @@ Module Type WMapsOn (E : DecidableType).
   Definition Exists (P : key -> A -> Prop) m := exists k a, MapsTo k a m /\ P k a.
 
   Definition eq : t A -> t A -> Prop := Equal.
- 
-  (*
-  Include IsEq. (** [eq] is obviously an equivalence, for subtyping only *)
-  Include HasEqDec.
-  *)
+
+  (* Including IsEq and HasEqDec more hassle than it's worth:
+     can't instantiate these higher-order module types w/ "yourself",
+     since [t] has wrong type ([Type -> Type] instead of [Type]), and
+     creating a new module type parametrized by A -- how exactly
+     would we make that work, even? -- is just not worth the work.
+
+     Contents copied outright instead *)
+  Global Declare Instance eq_equiv : Equivalence eq.
+  Parameter eq_dec : forall x y : t A, { eq x y } + { ~ eq x y }.
 
   (** Specifications of map operators *)
 
@@ -196,7 +201,7 @@ Module Type WMapsOn (E : DecidableType).
   Parameter add_spec2: ~ E.eq k k' -> (MapsTo k v (add k' v' m) <-> MapsTo k v m).
 
   Parameter remove_spec1: E.eq k k' -> ~ In k (remove k' m).
-  Parameter remove_spec2: ~ E.eq k k' -> MapsTo k' v (remove k m) <-> MapsTo k' v m.
+  Parameter remove_spec2: ~ E.eq k k' -> (MapsTo k' v (remove k m) <-> MapsTo k' v m).
 
   Parameter singleton_spec: E.eq k k' <-> MapsTo k v (singleton k' v).
 
@@ -323,7 +328,7 @@ Module Type Maps.
   Include MapsOn E.
 End Maps.
 
-Module Type M := Maps.
+Module Type S := Maps.
 
 
 (** ** Some subtyping tests
@@ -459,7 +464,7 @@ Module Type WRawMaps (E : DecidableType).
   Parameter remove_spec1: forall `{Ok A s},
     E.eq k k' -> ~ In k (remove k' s).
   Parameter remove_spec2: forall `{Ok A s},
-    ~ E.eq k k' -> MapsTo k' v (remove k s) <-> MapsTo k' v s.
+    ~ E.eq k k' -> (MapsTo k' v (remove k s) <-> MapsTo k' v s).
   Parameter singleton_spec :  E.eq k k' <-> MapsTo k v (singleton k' v).
   (* TODO set operations nor usefull for maps 
   Parameter union_spec : forall `{Ok s, Ok s'},
@@ -486,7 +491,7 @@ Module Type WRawMaps (E : DecidableType).
   Parameter elements_spec1 : InA eq_key_elt (k, v) (elements s) <-> MapsTo k v s.
   (** When compared with ordered sets, here comes the only
       property that is really weaker: *)
-  Parameter elements_spec2w : NoDupA eq_key (elements s).
+  Parameter elements_spec2w : forall `{Ok A s}, NoDupA eq_key (elements s).
   Parameter choose_spec1 : choose s = Some (k,v) -> MapsTo k v s.
   Parameter choose_spec2 : choose s = None -> Empty s.
 
@@ -631,7 +636,7 @@ Module WRaw2MapsOn (E:DecidableType)(M:WRawMaps E) <: WMapsOn E.
 
   Lemma remove_spec1:  E.eq k k' -> ~ In k (remove k' s).
   Proof. exact (@M.remove_spec1 _ _ _ _ _). Qed.
-  Lemma remove_spec2: ~ E.eq k k' -> MapsTo k' v (remove k s) <-> MapsTo k' v s.
+  Lemma remove_spec2: ~ E.eq k k' -> (MapsTo k' v (remove k s) <-> MapsTo k' v s).
   Proof. exact (@M.remove_spec2 _ _ _ _ _ _). Qed.
   Lemma singleton_spec : E.eq k k' <-> MapsTo k v (singleton k' v).
   Proof. exact (@M.singleton_spec _ _ _ _). Qed.
@@ -667,7 +672,7 @@ Module WRaw2MapsOn (E:DecidableType)(M:WRawMaps E) <: WMapsOn E.
     InA eq_key_elt (k, v) (elements s) <-> MapsTo k v s.
   Proof. exact (@M.elements_spec1 _ _ _ _). Qed.
   Lemma elements_spec2w : NoDupA eq_key (elements s).
-  Proof. exact (@M.elements_spec2w _ _). Qed.
+  Proof. exact (@M.elements_spec2w _ _ _). Qed.
   Lemma choose_spec1 : choose s = Some (k,v) -> MapsTo k v s.
   Proof. exact (@M.choose_spec1 _ _ _ _). Qed.
   Lemma choose_spec2 : choose s = None -> Empty s.

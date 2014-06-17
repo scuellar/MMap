@@ -486,7 +486,7 @@ Module Type WRawMaps (E : DecidableType).
   Parameter elements_spec1 : InA eq_key_elt (k, v) (elements s) <-> MapsTo k v s.
   (** When compared with ordered sets, here comes the only
       property that is really weaker: *)
-  Parameter elements_spec2w : NoDupA eq_key (elements s).
+  Parameter elements_spec2w : forall `{Ok A s}, NoDupA eq_key (elements s).
   Parameter choose_spec1 : choose s = Some (k,v) -> MapsTo k v s.
   Parameter choose_spec2 : choose s = None -> Empty s.
 
@@ -667,7 +667,7 @@ Module WRaw2MapsOn (E:DecidableType)(M:WRawMaps E) <: WMapsOn E.
     InA eq_key_elt (k, v) (elements s) <-> MapsTo k v s.
   Proof. exact (@M.elements_spec1 _ _ _ _). Qed.
   Lemma elements_spec2w : NoDupA eq_key (elements s).
-  Proof. exact (@M.elements_spec2w _ _). Qed.
+  Proof. exact (@M.elements_spec2w _ _ _). Qed.
   Lemma choose_spec1 : choose s = Some (k,v) -> MapsTo k v s.
   Proof. exact (@M.choose_spec1 _ _ _ _). Qed.
   Lemma choose_spec2 : choose s = None -> Empty s.

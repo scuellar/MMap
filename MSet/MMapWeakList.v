@@ -447,6 +447,7 @@ Module MakeRaw (X:DecidableType) <: WRawMaps X.
   unfold In in H0. inversion H0. apply H in H1. inversion H1.
   Qed.
 
+  
 
   Lemma elements_spec1 : forall s k v,
     InA eq_key_elt (k, v) (elements s) <-> MapsTo k v s.
@@ -461,23 +462,22 @@ Module MakeRaw (X:DecidableType) <: WRawMaps X.
                   apply InA_cons_tl. apply H0. assumption.
   Qed.
 
-  (*
-  Lemma elements_spec1 : forall (s : t) (x : elt), In x (elements s) <-> In x s.
-  Proof.
-  unfold elements; intuition.
-  Qed.
-  *)
-
-  Lemma elements_spec2w : forall s,
+  Lemma elements_spec2w : forall s `(Ok s),
      NoDupA eq_key (@elements A s).
-  Admitted.
-
-  (*
-  Lemma elements_spec2w : forall (s : t) {Hs : Ok s}, NoDup (elements s).
   Proof.
-  unfold elements; auto.
+    intros.
+    unfold elements.
+    induction H.
+    constructor.
+    constructor.
+    intro contr. apply H.
+    clear H. clear H0. clear IHNoDup.
+    induction contr as [ (k,v') l | (k,v') l].
+      unfold eq_key in H. simpl in H. rewrite In_cons. left. assumption.
+      rewrite In_cons. right. assumption.
+    assumption.
   Qed.
-  *)
+
 
   Lemma fold_spec : forall s (X : Type) (i : X) (f : key -> A -> X -> X),
     fold f s i = fold_left (fun (x:X) (p:key*A) => f (fst p) (snd p) x ) (elements s) i.

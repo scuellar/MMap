@@ -28,93 +28,121 @@ End TypElt.
 
 Module Type HasWOps (Import T:TypElt).
 
-  Section Foo.
-  Variable  A : Type.
+  Section Types.
 
-  Parameter empty : t A.
-  (** The empty map. *)
+    Variable  A : Type.
 
-  Parameter is_empty : t A -> bool.
-  (** Test whether a map is empty or not. *)
+    Parameter empty : t A.
+    (** The empty map. *)
 
-  Parameter mem : key -> t A -> bool.
-  (** [mem k m] tests whether [k] belongs to the map [m]. *)
- 
-  Parameter find : key -> t A -> option A.
+    Parameter is_empty : t A -> bool.
+    (** Test whether a map is empty or not. *)
 
-  Parameter add : key -> A -> t A -> t A.
-  (** [add k m] returns a map containing all elements of [m],
-  plus one mapping [k] to [v]. If [k] was already in [m], then its value
-  is replaced by [v]. *)
+    Parameter add : key -> A -> t A -> t A.
+    (** [add k m] returns a map containing all elements of [m],
+        plus one mapping [k] to [v]. If [k] was already in [m], then its value
+        is replaced by [v]. *)
 
-  Parameter singleton : key -> A -> t A.
-  (** [singleton k v] returns the one-element map containing only the key [k]
-  that maps to [v]. *)
+    Parameter find : key -> t A -> option A.
+    (** [find x m] returns the current binding of [x] in [m],
+	    or [None] if no such binding exists. *)
 
-  Parameter remove : key -> t A -> t A.
-  (** [remove k m] returns a map containing all elements of [m],
-  except [k]. If [k] was not in [m], [m] is returned unchanged. *)
+    Parameter remove : key -> t A -> t A.
+    (** [remove k m] returns a map containing all elements of [m],
+        except [k]. If [k] was not in [m], [m] is returned unchanged. *)
 
-  (*
-  TODO: Does not exist in FSet, OCaml has merge. What to do?
+    Parameter mem : key -> t A -> bool.
+    (** [mem k m] tests whether [k] belongs to the map [m]. *)
 
-  Parameter union : t A -> t A -> t A.
-  (** Set union. *)
+    Variable A' A'' : Type.
 
-  Parameter inter : t -> t -> t.
-  (** Set intersection. *)
+    Parameter map : (A -> A') -> t A -> t A'.
+    (** [map f m] returns a map with same domain as [m], where the associated
+	    value a of all bindings of [m] has been replaced by the result of the
+	    application of [f] to [a]. Since Coq is purely functional, the order
+        in which the bindings are passed to [f] is irrelevant. *)
 
-  Parameter diff : t -> t -> t.
-  (** Set difference. *)
-  *)
+    Parameter mapi : (key -> A -> A') -> t A -> t A'.
+    (** Same as [map], but the function receives as arguments both the
+	    key and the associated value for each binding of the map. *)
 
-  Parameter equal : (A -> A -> bool) -> t A -> t A -> bool.
-  (** [equal val_eq m1 m2] tests whether the maps [m1] and [m2] are
-  equal, that is, contains the same keys, and values [v1] in [m1]
-  and [v2] in [m2] for a common key [k] must be equal according to
-  [val_eq]. *)
+    Parameter map2 :
+     (option A -> option A' -> option A'') -> t A -> t A' ->  t A''.
+    (** [map2 f m m'] creates a new map whose bindings belong to the ones
+        of either [m] or [m']. The presence and value for a key [k] is
+        determined by [f e e'] where [e] and [e'] are the (optional) bindings
+        of [k] in [m] and [m']. *)
+    
+    Parameter elements : t A -> list (key * A).
+    (** [elements m] returns an assoc list corresponding to the bindings
+        of [m], in any order. *)
+  
+    Parameter cardinal : t A -> nat.
+    (** [cardinal m] returns the number of bindings in [m]. *)
+    
+    Parameter fold : forall X : Type, (key -> A -> X -> X) -> t A -> X -> X.
+    (** [fold f m a] computes [(f kN vN ... (f k2 v2 (f k1 v1 a))...)],
+        where [k1 ... kN] are the keys, and [v1 ... vN] the corresponding values
+        of [m]. The order in which elements of [m] are presented to [f] is
+        unspecified. *)
 
-  Parameter subset : (A -> A -> bool) -> t A -> t A -> bool.
-  (** [subset val_eq m1 m2] tests whether the map [m1] is a subset of
-  the map [m2], where the values [v1] and [v2] for a common key [k]
-  must be equal according to [val_eq]. *)
+    Parameter equal : (A -> A -> bool) -> t A -> t A -> bool.
+    (** [equal val_eq m1 m2] tests whether the maps [m1] and [m2] are
+        equal, that is, contains the same keys, and values [v1] in [m1]
+        and [v2] in [m2] for a common key [k] must be equal according to
+        [val_eq]. *)
 
-  Parameter fold : forall X : Type, (key -> A -> X -> X) -> t A -> X -> X.
-  (** [fold f m a] computes [(f kN vN ... (f k2 v2 (f k1 v1 a))...)],
-  where [k1 ... kN] are the keys, and [v1 ... vN] the corresponding values
-  of [m]. The order in which elements of [m] are presented to [f] is
-  unspecified. *)
+    (* TODO: This is the end of the original FMap.
+       * Is the rest really needed?
+       * If so, there probably are facts about it missing from MMapFacts, as
+         MMapFacts was based on the original FMap
+    *)
+    
+    Parameter singleton : key -> A -> t A.
+    (** [singleton k v] returns the one-element map containing only the key [k]
+        that maps to [v]. *)
 
-  Parameter for_all : (key -> A -> bool) -> t A -> bool.
-  (** [for_all p m] checks if all elements of the map [m]
-  satisfy the predicate [p]. *)
+    (* TODO: Does not exist in FSet, OCaml has merge. What to do? *)
+    (*
+    Parameter union : t A -> t A -> t A.
+    (** Set union. *)
 
-  Parameter exists_ : (key -> A -> bool) -> t A -> bool.
-  (** [exists p m] checks if at least one element of
-  the map [m] satisfies the predicate [p]. *)
+    Parameter inter : t -> t -> t.
+    (** Set intersection. *)
 
-  Parameter filter : (key -> A -> bool) -> t A -> t A.
-  (** [filter p m] returns the map of all elements in [m]
-  that satisfy predicate [p]. *)
+    Parameter diff : t -> t -> t.
+    (** Set difference. *)
+    *)
 
-  Parameter partition : (key -> A -> bool) -> t A -> t A * t A.
-  (** [partition p m] returns a pair of maps [(m1, m2)], where
-  [m1] is the map of all the elements of [m] that satisfy the
-  predicate [p], and [m2] is the map of all the elements of
-  [m] that do not satisfy [p]. *)
 
-  Parameter cardinal : t A -> nat.
-  (** Return the number of elements of a map. *)
+    Parameter subset : (A -> A -> bool) -> t A -> t A -> bool.
+    (** [subset val_eq m1 m2] tests whether the map [m1] is a subset of
+        the map [m2], where the values [v1] and [v2] for a common key [k]
+        must be equal according to [val_eq]. *)
 
-  Parameter elements : t A -> list (key * A).
-  (** Return the list of all keys and values of the given map,
-  in any order. *)
+    Parameter for_all : (key -> A -> bool) -> t A -> bool.
+    (** [for_all p m] checks if all elements of the map [m]
+        satisfy the predicate [p]. *)
 
-  Parameter choose : t A -> option (key * A).
+    Parameter exists_ : (key -> A -> bool) -> t A -> bool.
+    (** [exists p m] checks if at least one element of
+        the map [m] satisfies the predicate [p]. *)
+
+    Parameter filter : (key -> A -> bool) -> t A -> t A.
+    (** [filter p m] returns the map of all elements in [m]
+        that satisfy predicate [p]. *)
+
+    Parameter partition : (key -> A -> bool) -> t A -> t A * t A.
+    (** [partition p m] returns a pair of maps [(m1, m2)], where
+        [m1] is the map of all the elements of [m] that satisfy the
+        predicate [p], and [m2] is the map of all the elements of
+        [m] that do not satisfy [p]. *)
+
+    Parameter choose : t A -> option (key * A).
   (** Return one key and value of the given map, or [None] if
-  the map is empty. Which key is chosen is unspecified.
-  Equal maps could return different elements. *)
-  End Foo.
+      the map is empty. Which key is chosen is unspecified.
+      Equal maps could return different elements. *)
+  End Types.
 End HasWOps.
 
 

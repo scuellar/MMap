@@ -498,13 +498,33 @@ Proof.
 Qed.
 Local Hint Immediate In_1.
 
-(* TODO: need this?*)
-(*Instance In_compat : Proper (X.eq==>val_eq==>eq==>iff) MapsToT.
+Instance In_compat : Proper (X.eq==>val_eq==>eq==>iff) MapsToT.
 Proof.
-Search Proper.
-apply proper_sym_impl_iff_2. auto with *.
-repeat red; intros; subst. apply In_1 with x; auto.
-Qed.*)
+  unfold Proper, respectful.
+  intros.
+  subst.
+  induction y1 as [| inf tl ? k v tr ?].
+  + split; intros; inversion H1.
+  + split; intros; inversion H1.
+    - subst.
+      destruct X.eq_equiv as [_ _ HH].
+      apply IsRoot.
+      eapply HH; eauto.
+      eapply val_trans; eauto.
+    - apply IHy1_1 in H3.
+      apply InLeft, H3.
+    - apply IHy1_2 in H3.
+      apply InRight, H3.
+    - subst.
+      destruct X.eq_equiv as [_ _ HH].
+      apply IsRoot.
+      eapply HH; eauto.
+      eapply val_trans; eauto.
+    - apply IHy1_1 in H3.
+      apply InLeft, H3.
+    - apply IHy1_2 in H3.
+      apply InRight, H3.
+Qed.
 
 Lemma In_node_iff :
  forall c l k1 v1 (r: tree A) k2 v2,
@@ -576,18 +596,17 @@ Proof.
  eauto.
 Qed.
 
-(* TODO:
 Instance lt_tree_compat : Proper (X.eq ==> Logic.eq ==> iff) lt_tree.
 Proof.
  apply proper_sym_impl_iff_2; auto.
- intros x x' Hx s s' Hs H y Hy. subst. setoid_rewrite <- Hx; auto.
+ intros x x' Hx s s' Hs H y Hy. subst. setoid_rewrite <- Hx. unfold lt_tree in H. apply H.
 Qed.
 
 Instance gt_tree_compat : Proper (X.eq ==> Logic.eq ==> iff) gt_tree.
 Proof.
  apply proper_sym_impl_iff_2; auto.
- intros x x' Hx s s' Hs H y Hy. subst. setoid_rewrite <- Hx; auto.
-Qed.*)
+ intros x x' Hx s s' Hs H y Hy. subst. setoid_rewrite <- Hx; auto. unfold lt_tree in H. apply H.
+Qed.
 
 Local Hint Resolve lt_tree_not_in lt_tree_trans gt_tree_not_in gt_tree_trans.
 
@@ -648,7 +667,6 @@ Qed.
 
 Functional Scheme min_elt_ind := Induction for min_elt Sort Prop.
 Functional Scheme max_elt_ind := Induction for max_elt Sort Prop.
-
 
 Lemma min_elt_spec1 t k : forall v, min_elt A t = Some (k, v) -> MapsToT k v t.
 Proof.
@@ -739,40 +757,53 @@ Qed.
 
 (** ** Elements *)
 
-Lemma elements_spec1' : forall t acc k,
- InA X.eq x (elements_aux acc s) <-> InT x s \/ InA X.eq x acc.
+Lemma elements_spec1' : forall t acc k v,
+ InA (RelProd X.eq val_eq) (k, v) (elements_aux A acc t) <-> 
+ MapsToT k v t \/ InA (RelProd X.eq val_eq) (k, v) acc.
 Proof.
- induction s as [ | c l Hl x r Hr ]; simpl; auto.
- intuition.
- inversion H0.
- intros.
- rewrite Hl.
- destruct (Hr acc x0); clear Hl Hr.
- intuition; inversion_clear H3; intuition.
+ induction t as [| inf tl Hl k0 v0 tr Hr]; intros; simpl; auto.
+ + intuition.
+   inversion H0.
+ + intros.
+   rewrite Hl.
+   destruct (Hr acc k v); clear Hl Hr.
+   intuition; inversion_clear H3; intuition.
+   unfold RelProd, RelCompFun in H0.
+   destruct H0. intuition.
 Qed.
 
-Lemma elements_spec1 : forall s x, InA X.eq x (elements s) <-> InT x s.
+Lemma elements_spec1 : forall t k v, InA (RelProd X.eq val_eq) (k, v) (elements A t) <-> MapsToT k v t.
 Proof.
- intros; generalize (elements_spec1' s nil x); intuition.
+ intros; generalize (elements_spec1' t nil k v); intuition.
  inversion_clear H0.
 Qed.
 
-Lemma elements_spec2' : forall s acc `{Ok s}, sort X.lt acc ->
- (forall x y : elt, InA X.eq x acc -> InT y s -> X.lt y x) ->
- sort X.lt (elements_aux acc s).
+Lemma elements_spec2' : forall t acc `{Ok t}, sort (RelProd X.lt (fun _ _ => True)) acc ->
+ (forall k1 k2 v1 v2, InA (RelProd X.eq val_eq) (k1, v1) acc -> MapsToT k2 v2 t -> X.lt k2 k1) ->
+ sort (RelProd X.lt (fun _ _ => True)) (elements_aux A acc t).
 Proof.
- induction s as [ | c l Hl y r Hr]; simpl; intuition.
+ induction t as [| inf tl Hl k0 v0 tr Hr]; intros; simpl; intuition.
  inv.
  apply Hl; auto.
- constructor.
- apply Hr; auto.
- eapply InA_InfA; eauto with *.
- intros.
- destruct (elements_spec1' r acc y0); intuition.
- intros.
- inversion_clear H.
- order.
- destruct (elements_spec1' r acc x); intuition eauto.
+ + constructor.
+   apply Hr; intuition. apply H1 with (v1:=v1) (v2:=v2); intuition.
+   eapply (@InA_InfA _ (RelProd X.eq val_eq)); eauto with *.
+   intros.
+   destruct y as [ky vy].
+   unfold RelProd, RelCompFun. simpl; split; auto. simpl.
+   apply elements_spec1' in H.
+   destruct H.
+   - eapply H10; eauto.
+   - eapply H1; eauto.
+ + intros.
+   inversion_clear H.
+   - unfold RelProd, RelCompFun in H3. destruct H3; simpl in H3, H.
+     apply (lt_tree_compat k1 k0 H tl tl Logic.eq_refl) in H9.
+     eapply H9; eauto.
+   - apply elements_spec1' in H3.
+     destruct H3.
+     * apply H9 in H2. apply H10 in H. order.
+     * eapply H1. eauto. apply InLeft. eauto.
 Qed.
 
 Lemma elements_spec2 : forall s `(Ok s), sort X.lt (elements s).
@@ -1031,12 +1062,12 @@ Proof.
  assert (InT a (Node c2 l2 x2 r2)) by auto; intuition_in; order.
 Qed.
 
-
 (** ** Comparison *)
 
 (** Relations [eq] and [lt] over trees *)
+Check X.
 
-Module L := MSetInterface.MakeListOrdering X.
+Module L := MMapInterface.MakeListOrdering X.
 
 Definition eq := Equal.
 Instance eq_equiv : Equivalence eq.

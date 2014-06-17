@@ -196,7 +196,7 @@ Module Type WMapsOn (E : DecidableType).
   Parameter add_spec2: ~ E.eq k k' -> (MapsTo k v (add k' v' m) <-> MapsTo k v m).
 
   Parameter remove_spec1: E.eq k k' -> ~ In k (remove k' m).
-  Parameter remove_spec2: ~ E.eq k k' -> MapsTo k' v (remove k m) <-> MapsTo k' v m.
+  Parameter remove_spec2: ~ E.eq k k' -> (MapsTo k' v (remove k m) <-> MapsTo k' v m).
 
   Parameter singleton_spec: E.eq k k' <-> MapsTo k v (singleton k' v).
 
@@ -459,7 +459,7 @@ Module Type WRawMaps (E : DecidableType).
   Parameter remove_spec1: forall `{Ok A s},
     E.eq k k' -> ~ In k (remove k' s).
   Parameter remove_spec2: forall `{Ok A s},
-    ~ E.eq k k' -> MapsTo k' v (remove k s) <-> MapsTo k' v s.
+    ~ E.eq k k' -> (MapsTo k' v (remove k s) <-> MapsTo k' v s).
   Parameter singleton_spec :  E.eq k k' <-> MapsTo k v (singleton k' v).
   (* TODO set operations nor usefull for maps 
   Parameter union_spec : forall `{Ok s, Ok s'},
@@ -631,7 +631,7 @@ Module WRaw2MapsOn (E:DecidableType)(M:WRawMaps E) <: WMapsOn E.
 
   Lemma remove_spec1:  E.eq k k' -> ~ In k (remove k' s).
   Proof. exact (@M.remove_spec1 _ _ _ _ _). Qed.
-  Lemma remove_spec2: ~ E.eq k k' -> MapsTo k' v (remove k s) <-> MapsTo k' v s.
+  Lemma remove_spec2: ~ E.eq k k' -> (MapsTo k' v (remove k s) <-> MapsTo k' v s).
   Proof. exact (@M.remove_spec2 _ _ _ _ _ _). Qed.
   Lemma singleton_spec : E.eq k k' <-> MapsTo k v (singleton k' v).
   Proof. exact (@M.singleton_spec _ _ _ _). Qed.

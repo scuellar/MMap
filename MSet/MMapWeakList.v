@@ -54,8 +54,8 @@ Module Ops (X: DecidableType) <: WOps X.
   Fixpoint add (x : key) (v : A) (s : t) : t :=
     match s with
     | nil => (x, v) :: nil
-    | (y, v) :: l =>
-        if X.eq_dec x y then s else (y, v) :: add x v l
+    | (y, v') :: l =>
+        if X.eq_dec x y then (y, v) :: s else (y, v') :: add x v l
     end.
 
   Definition singleton (x : key) (v : A) : t := (x, v) :: nil.
@@ -141,6 +141,23 @@ Module MakeRaw (X:DecidableType) <: WRawMaps X.
   | MapsTo_cons_hd : forall k l, X.eq x k -> MapsToA x v ((k,v) :: l)
   | MapsTo_cons_tl : forall k v' l, MapsToA x v l -> MapsToA x v ((k,v') :: l).
 
+  Lemma MapsTo_cons: forall x k v v' l,
+    (MapsToA x v ((k,v') :: l) <-> (X.eq x k /\ v = v') \/ MapsToA x v l).
+  Proof.
+   intros. split; intro HM.
+   inversion HM. left; split. assumption. reflexivity.
+                 right; assumption.
+   inversion HM. inversion H. rewrite H1. constructor. assumption.
+                 constructor. assumption.
+  Qed.
+
+
+  Lemma MapsTo_other: forall x k v v' l,
+    ~ X.eq x k -> (MapsToA x v ((k,v') :: l) <-> MapsToA x v l).
+  Proof.
+    intros. rewrite MapsTo_cons. intuition.
+  Qed.
+
   Definition MapsTo := MapsToA.
 
   Definition In (k:key)(m: t A) : Prop := exists e:A, MapsTo k e m.
@@ -202,12 +219,12 @@ Module MakeRaw (X:DecidableType) <: WRawMaps X.
   Proof.
   repeat red; intros. subst. unfold MapsTo.
   split.
-  intro H1. induction H1. constructor. unfold Transitive in eqtrans.
-  apply eqtrans with (y := x). auto. auto.
+  intro H1. induction H1. constructor.
+  transitivity x. symmetry. assumption. assumption.
   constructor. assumption.
 
-  intro H1. induction H1. constructor. unfold Transitive in eqtrans.
-  apply eqtrans with (y := y). auto. auto.
+  intro H1. induction H1. constructor. 
+  transitivity y. assumption. assumption.
   constructor. assumption. 
   Qed.
 
@@ -263,19 +280,35 @@ Module MakeRaw (X:DecidableType) <: WRawMaps X.
 
   Global Instance isok_Ok l : isok l = true -> Ok l | 10.
   Proof.
-    (*
   intros. apply <- isok_iff; auto.
   Qed.
-    *)
-  Admitted.
+
 
   Lemma add_spec1: forall s k k' v `{Ok s},
      X.eq k k' -> MapsTo k v (add k' v s).
-  Admitted.
+   Proof.
+    intros.
+    induction H.
+    constructor; assumption.
+    simpl.
+    destruct (X.eq_dec k' x).
+    apply MapsTo_cons_hd. transitivity k'; assumption.
+    apply MapsTo_cons_tl. assumption.
+  Qed.
   
   Lemma add_spec2: forall s k k' v v' `{Ok s},
      ~ X.eq k k' -> (MapsTo k v (add k' v' s) <-> MapsTo k v s).
-  Admitted.
+  Proof.
+    intros. 
+    induction H.
+    simpl. rewrite MapsTo_other. apply iff_refl. assumption.
+ 
+    simpl. destruct (X.eq_dec k' x).
+    assert (~ X.eq k x).
+      intro contr. apply H0. transitivity x. assumption. symmetry. assumption.
+    repeat (rewrite MapsTo_cons). intuition.
+    repeat (rewrite MapsTo_cons). intuition.
+  Qed.
 
   (*
   Lemma add_spec :

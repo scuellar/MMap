@@ -145,10 +145,12 @@ Module MakeRaw (X:DecidableType) <: WRawMaps X.
     (MapsToA x v ((k,v') :: l) <-> (X.eq x k /\ v = v') \/ MapsToA x v l).
   Proof.
    intros. split; intro HM.
-   inversion HM. left; split. assumption. reflexivity.
-                 right; assumption.
-   inversion HM. inversion H. rewrite H1. constructor. assumption.
-                 constructor. assumption.
+    * inversion HM.
+     - left; split. assumption. reflexivity.
+     - right; assumption.
+    * inversion HM.
+      - inversion H. rewrite H1. constructor. assumption.
+      - constructor. assumption.
   Qed.
 
 
@@ -168,9 +170,9 @@ Module MakeRaw (X:DecidableType) <: WRawMaps X.
     intros.
     unfold In.
     split; intro H; inversion H.
-    rewrite MapsTo_cons in H0. inversion H0. left. intuition. right. exists x0. assumption.
-    exists v. constructor. assumption.
-    inversion H0. exists x0. constructor. assumption.
+     * rewrite MapsTo_cons in H0. inversion H0. left. intuition. right. exists x0. assumption.
+     * exists v. constructor. assumption.
+     * inversion H0. exists x0. constructor. assumption.
   Qed.    
 
   Definition Empty m := forall k a, ~ MapsTo k a m.
@@ -231,86 +233,79 @@ Module MakeRaw (X:DecidableType) <: WRawMaps X.
   Proof.
     repeat red; intros. subst. unfold MapsTo.
     split.
-    intro H1. induction H1. constructor.
-    transitivity x. symmetry. assumption. assumption.
-    constructor. assumption.
-
-    intro H1. induction H1. constructor. 
-    transitivity y. assumption. assumption.
-    constructor. assumption. 
+    * intro H1. induction H1.
+      - constructor. transitivity x. symmetry. assumption. assumption.
+      - constructor. assumption.
+    * intro H1. induction H1. constructor. 
+      - transitivity y. assumption. assumption.
+      - constructor. assumption. 
   Qed.
   Hint Resolve MapsTo_compat.
 
   Instance In_compat : Proper (X.eq==>eq==>iff) In.
   Proof. unfold In.  solve_proper. Qed.
 
-
-  Lemma mem_spec : forall s x `{Ok s},
-   mem x s = true <-> In x s.
+  Lemma mem_spec : forall s x `{Ok s}, mem x s = true <-> In x s.
   Proof.
-  intros.
-  split.
-  intro.
-  induction s.
-  inversion H0.
-  destruct a.
-  simpl in H0.
-  destruct (X.eq_dec x k).
-  exists a. constructor. assumption.
-  assert (In x s).
-    apply IHs. unfold Ok. inversion H. assumption. assumption.
-  inversion H1. exists x0. constructor. assumption.
-
-  intro.
-  induction H0.
-  induction H0.
-  simpl.
-  destruct (X.eq_dec x k). reflexivity. apply n in H0. inversion H0.
-  simpl.
-  destruct (X.eq_dec x k). reflexivity. apply IHMapsToA. unfold Ok. inversion H. assumption.
+    intros. split.
+     - intro. induction s.
+       + inversion H0.
+       + destruct a.
+         simpl in H0.
+         destruct (X.eq_dec x k).
+          * exists a. constructor. assumption.
+          * assert (In x s).
+              apply IHs. unfold Ok. inversion H. assumption. assumption.
+            inversion H1. exists x0. constructor. assumption.
+     - intro.
+       induction H0.
+       induction H0.
+       + simpl. destruct (X.eq_dec x k).
+         * reflexivity.
+         * apply n in H0. inversion H0.
+       + simpl. destruct (X.eq_dec x k).
+         * reflexivity.
+         * apply IHMapsToA. unfold Ok. inversion H. assumption.
   Qed.
-
 
   Lemma isok_iff : forall l, Ok l <-> isok l = true.
   Proof.
     intros.
-    induction l.
-    simpl. intuition. constructor.
-   
-    destruct a.
-    simpl.
-    rewrite andb_true_iff, negb_true_iff.
-    rewrite <- IHl.
-    split.
-    intro. inversion H. split.
-      apply not_true_is_false.
-      assert (Ok l). unfold Ok. assumption.
-      rewrite <- mem_spec in H2. assumption. assumption. assumption.
-
-    intro. inversion H. constructor.
-      intro contr.
-      rewrite <- mem_spec in contr.
-      rewrite H0 in contr. inversion contr.
-      assumption.
-      unfold Ok in H1. assumption.
-   Qed.
+    induction l as [ | (k,v) l ].
+    - simpl. intuition. constructor.
+    - simpl.
+      rewrite andb_true_iff, negb_true_iff.
+      rewrite <- IHl.
+      split.
+      + intro. inversion H. split.
+        * apply not_true_is_false.
+          assert (Ok l). unfold Ok. assumption.
+          rewrite <- mem_spec in H2. assumption. assumption.
+        * assumption.
+      + intro. inversion H.
+        constructor. intro contr.
+        rewrite <- mem_spec in contr.
+        rewrite H0 in contr. inversion contr.
+        assumption.
+        unfold Ok in H1. assumption.
+  Qed.
 
   Global Instance isok_Ok l : isok l = true -> Ok l | 10.
   Proof.
-  intros. apply <- isok_iff; auto.
+    intros. apply <- isok_iff; auto.
   Qed.
 
 
   Lemma add_spec1: forall s k k' v `{Ok s},
      X.eq k k' -> MapsTo k v (add k' v s).
-   Proof.
+  Proof.
     intros.
     induction H.
-    constructor; assumption.
-    simpl.
-    destruct (X.eq_dec k' x).
-    apply MapsTo_cons_hd. transitivity k'; assumption.
-    apply MapsTo_cons_tl. assumption.
+    - constructor; assumption.
+    - simpl.
+      destruct (X.eq_dec k' x).
+      + apply MapsTo_cons_hd. transitivity k'; assumption.
+      + apply MapsTo_cons_tl. assumption.
   Qed.
   
   Lemma add_spec2: forall s k k' v v' `{Ok s},
@@ -318,13 +313,12 @@ Module MakeRaw (X:DecidableType) <: WRawMaps X.
   Proof.
     intros. 
     induction H.
-    simpl. rewrite MapsTo_other. apply iff_refl. assumption.
- 
-    simpl. destruct (X.eq_dec k' x).
-    assert (~ X.eq k x).
-      intro contr. apply H0. transitivity x. assumption. symmetry. assumption.
-    repeat (rewrite MapsTo_cons). intuition.
-    repeat (rewrite MapsTo_cons). intuition.
+    - simpl. rewrite MapsTo_other. apply iff_refl. assumption.
+    - simpl. destruct (X.eq_dec k' x).
+      + assert (~ X.eq k x).
+          intro contr. apply H0. transitivity x. assumption. symmetry. assumption.
+        repeat (rewrite MapsTo_cons). intuition.
+      + repeat (rewrite MapsTo_cons). intuition.
   Qed.
 
   Lemma add_spec2_in: forall s k k' v `{Ok s},
@@ -332,18 +326,18 @@ Module MakeRaw (X:DecidableType) <: WRawMaps X.
   Proof.
     intros. unfold In.
     split; intro HM; inversion HM. 
-    rewrite add_spec2 in H1. exists x. assumption. assumption. assumption.
-    exists x. rewrite add_spec2.  assumption. assumption. assumption.
+    - rewrite add_spec2 in H1. exists x. assumption. assumption. assumption.
+    - exists x. rewrite add_spec2.  assumption. assumption. assumption.
   Qed.
                  
   Global Instance add_ok s k v `(Ok s) : Ok (add k v s).
   Proof.
     induction H.
-    constructor. intro H. inversion H. inversion H0. constructor.
-    simpl. destruct (X.eq_dec k x).
-    constructor; try assumption.
-    constructor. rewrite add_spec2_in; intuition.
-    assumption.
+    - constructor. intro H. inversion H. inversion H0. constructor.
+    - simpl. destruct (X.eq_dec k x).
+      + constructor; try assumption.
+      + constructor. rewrite add_spec2_in; intuition.
+        assumption.
   Qed.
 
   Lemma remove_noop: forall s k,
@@ -351,13 +345,13 @@ Module MakeRaw (X:DecidableType) <: WRawMaps X.
   Proof.
     intros.
     induction s as [ | (x,v) s].
-    reflexivity.
-    assert (~ In k s). intro contr. apply H. rewrite In_cons. right. assumption.
-    apply IHs in H0.
-    simpl.
-    rewrite In_cons in H.
-    rewrite H0.
-    destruct (X.eq_dec k x). intuition. reflexivity.
+    - reflexivity.
+    - assert (~ In k s). intro contr. apply H. rewrite In_cons. right. assumption.
+      apply IHs in H0.
+      simpl.
+      rewrite In_cons in H.
+      rewrite H0.
+      destruct (X.eq_dec k x). intuition. reflexivity.
   Qed.
 
   Lemma remove_spec1: forall s k k' `{Ok s},
@@ -365,11 +359,11 @@ Module MakeRaw (X:DecidableType) <: WRawMaps X.
   Proof.
     intros.
     induction H.
-    intro contr. inversion contr. inversion H.
-    intro contr. simpl in contr.
-    destruct (X.eq_dec k' x).
-    rewrite H0 in contr. rewrite e in contr. apply H in contr. inversion contr.
-    rewrite In_cons in contr. intuition. apply n. rewrite <- H0. assumption.
+    - intro contr. inversion contr. inversion H.
+    - intro contr. simpl in contr.
+      destruct (X.eq_dec k' x).
+      + rewrite H0 in contr. rewrite e in contr. apply H in contr. inversion contr.
+      + rewrite In_cons in contr. intuition. apply n. rewrite <- H0. assumption.
   Qed.    
 
   Lemma remove_spec2: forall s k k' v `{Ok s},
@@ -377,12 +371,12 @@ Module MakeRaw (X:DecidableType) <: WRawMaps X.
   Proof.
     intros.
     induction H.
-    simpl. intuition.
-    simpl.
-    destruct (X.eq_dec k x).
-    assert (~X.eq k' x). intro contr. apply H0. rewrite e. rewrite contr. intuition.
-    rewrite MapsTo_cons. intuition.
-    repeat (rewrite MapsTo_cons). intuition.
+    - simpl. intuition.
+    - simpl.
+      destruct (X.eq_dec k x).
+      + assert (~X.eq k' x). intro contr. apply H0. rewrite e. rewrite contr. intuition.
+        rewrite MapsTo_cons. intuition.
+      + repeat (rewrite MapsTo_cons). intuition.
   Qed.
 
   Lemma forall_iff_same: forall {X} (P P' : X -> Prop),
@@ -390,8 +384,8 @@ Module MakeRaw (X:DecidableType) <: WRawMaps X.
   Proof.
     intros X P P' Heq.
     split; intro H; inversion H.
-    rewrite Heq in H0. exists x. assumption.
-    rewrite <- Heq in H0. exists x. assumption.
+    - rewrite Heq in H0. exists x. assumption.
+    - rewrite <- Heq in H0. exists x. assumption.
   Qed.
 
   Lemma remove_spec2_In: forall s k k'`{Ok s},
@@ -403,18 +397,19 @@ Module MakeRaw (X:DecidableType) <: WRawMaps X.
   Global Instance remove_ok s x `(Ok s) : Ok (remove x s).
   Proof.
     induction H.
-    constructor.
-    simpl. destruct (X.eq_dec x x0). apply H0.
-    constructor.
-    rewrite remove_spec2_In; assumption. 
-    assumption.
+    - constructor.
+    - simpl. destruct (X.eq_dec x x0).
+      + apply H0.
+      + constructor.
+        rewrite remove_spec2_In; assumption. 
+        assumption.
   Qed.
 
   Lemma singleton_ok : forall k v, Ok (singleton k v).
   Proof.
-  intros.
-  unfold singleton, Ok. constructors. unfold In. intro.
-  inversion H. inversion H0.
+    intros.
+    unfold singleton, Ok. constructors. unfold In. intro.
+    inversion H. inversion H0.
   Qed.
 
   Lemma singleton_spec : forall k k' v,
@@ -422,8 +417,8 @@ Module MakeRaw (X:DecidableType) <: WRawMaps X.
   Proof.
     intros.
     split; intro H.
-    unfold singleton. rewrite MapsTo_cons. left. split. assumption. reflexivity.
-    inversion H. assumption. inversion H1.
+    - unfold singleton. rewrite MapsTo_cons. left. split. assumption. reflexivity.
+    - inversion H. assumption. inversion H1.
   Qed.
 
   Lemma empty_ok : Ok (empty A).
@@ -439,27 +434,29 @@ Module MakeRaw (X:DecidableType) <: WRawMaps X.
 
   Lemma is_empty_spec : forall s : t A, is_empty s = true <-> Empty s.
   Proof.
-  unfold Empty; destruct s; simpl; split; intros; auto.
-  intro; inv. unfold In in H. inversion H. inversion H0. inversion H.
-  assert (In (fst p) (p :: s)).
-    destruct p.  unfold In. exists a. constructor.
-    auto.
-  unfold In in H0. inversion H0. apply H in H1. inversion H1.
+    unfold Empty; destruct s; simpl; split; intros; auto.
+    - intro; inv. unfold In in H. inversion H. inversion H0.
+    - inversion H.
+    - assert (In (fst p) (p :: s)).
+        destruct p.  unfold In. exists a. constructor.
+      auto.
+      unfold In in H0. inversion H0. apply H in H1. inversion H1.
   Qed.
 
-  
-
+ 
   Lemma elements_spec1 : forall s k v,
     InA eq_key_elt (k, v) (elements s) <-> MapsTo k v s.
   Proof.
     intros. unfold elements.
     induction s as [ | (k',v') s].
-    intuition. inversion H. inversion H.
-    intuition.
-    inversion H1. inversion H3. simpl in H5. simpl in H6. rewrite H6. constructor. assumption.
-                  constructor. apply H. assumption.
-    inversion H1. constructor. unfold eq_key_elt. simpl. split. assumption. reflexivity.
-                  apply InA_cons_tl. apply H0. assumption.
+    - intuition. inversion H. inversion H.
+    - intuition.
+      inversion H1.
+      + inversion H3. simpl in H5. simpl in H6. rewrite H6. constructor. assumption.
+      + constructor. apply H. assumption.
+      + inversion H1.
+        * constructor. unfold eq_key_elt. simpl. split. assumption. reflexivity.
+        * apply InA_cons_tl. apply H0. assumption.
   Qed.
 
   Lemma elements_spec2w : forall s `(Ok s),
@@ -468,14 +465,14 @@ Module MakeRaw (X:DecidableType) <: WRawMaps X.
     intros.
     unfold elements.
     induction H.
-    constructor.
-    constructor.
-    intro contr. apply H.
-    clear H. clear H0. clear IHNoDup.
-    induction contr as [ (k,v') l | (k,v') l].
-      unfold eq_key in H. simpl in H. rewrite In_cons. left. assumption.
-      rewrite In_cons. right. assumption.
-    assumption.
+    - constructor.
+    - constructor.
+      intro contr. apply H.
+      + clear H. clear H0. clear IHNoDup.
+        induction contr as [ (k,v') l | (k,v') l].
+        * unfold eq_key in H. simpl in H. rewrite In_cons. left. assumption.
+        * rewrite In_cons. right. assumption.
+      + assumption.
   Qed.
 
 

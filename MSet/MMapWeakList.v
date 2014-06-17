@@ -200,7 +200,7 @@ Module MakeRaw (X:DecidableType) <: WRawMaps X.
 
   Lemma MapsTo_compat : Proper (X.eq==>eq==>eq==>iff) MapsTo.
   Proof.
-  repeat red; intros. subst. (* rewrite H; auto.*) admit.
+  repeat red; intros. subst. admit.
   Qed.
 
   Lemma mem_spec : forall s x `{Ok s},
@@ -249,11 +249,8 @@ Module MakeRaw (X:DecidableType) <: WRawMaps X.
 
   Global Instance isok_Ok l : isok l = true -> Ok l | 10.
   Proof.
-    (*
-  intros. apply <- isok_iff; auto.
+    intro P. apply isok_iff. exact P.
   Qed.
-    *)
-  Admitted.
 
   Lemma add_spec1: forall s k k' v `{Ok s},
      X.eq k k' -> MapsTo k v (add k' v s).

@@ -22,7 +22,6 @@ Unset Strict Implicit.
    The specs are proved under the additional condition of no redundancy.
    And the functions returning sets are proved to preserve this invariant. *)
 
-
 (** ** The set operations. *)
 
 Module Ops (X: DecidableType) <: WOps X.
@@ -129,13 +128,13 @@ Module Ops (X: DecidableType) <: WOps X.
      end.
   End Foo.
 
-  Definition map : forall A A', (A -> A') -> t A -> t A'.
-  Admitted.
+  Definition mapi {A A'} (f : key -> A -> A') : t A -> t A' :=
+    List.map (fun p => (fst p, f (fst p) (snd p))).
 
-  Definition mapi : forall A A', (key -> A -> A') -> t A -> t A'.
-  Admitted.
+  Definition map {A A'} (f : A -> A') : t A -> t A' :=
+    mapi (fun k v => f v).
 
-  Definition map2 : forall A A' A'', (option A -> option A' -> option A'') -> t A -> t A' ->  t A''.
+  Definition map2 {A A' A''} (f : option A -> option A' -> option A'') : t A -> t A' ->  t A''.
   Admitted.
 
 End Ops.
@@ -255,6 +254,7 @@ Module MakeRaw (X:DecidableType) <: WRawMaps X.
 
   Instance In_compat : Proper (X.eq==>eq==>iff) In.
   Proof. unfold In.  solve_proper. Qed.
+  Hint Resolve In_compat.
 
   Lemma mem_spec : forall s x `{Ok s}, mem x s = true <-> In x s.
   Proof.
@@ -814,20 +814,51 @@ Module MakeRaw (X:DecidableType) <: WRawMaps X.
 
   Lemma map_1 : forall (elt elt':Type)(m: t elt)(x:key)(e:elt)(f:elt->elt'),
                       MapsTo x e m -> MapsTo x (f e) (map f m).
-  Admitted.
+    intros. induction H; constructor; assumption.
+  Qed.
 
   Lemma map_2 : forall (elt elt':Type)(m: t elt)(x:key)(f:elt->elt'),
                       In x (map f m) -> In x m.
-  Admitted.
-
+    intros.
+    remember (map f m) as m'.
+    generalize dependent m.
+    unfold In in H. inversion H. clear H. induction H0.
+    - intros.
+      destruct m as [|(k',v') m]; inversion Heqm'; subst; clear Heqm'.
+      rewrite In_cons. left. assumption.
+    - intros.
+      destruct m as [|(k',v'') m]; inversion Heqm'; subst; clear Heqm'.
+      rewrite In_cons. right. apply IHMapsToA. reflexivity.
+  Qed.
+      
   Lemma mapi_1 : forall (elt elt':Type)(m: t elt)(x:key)(e:elt)
                         (f:key->elt->elt'), MapsTo x e m ->
                                             exists y, X.eq y x /\ MapsTo x (f y e) (mapi f m).
-  Admitted.
+    intros.
+    induction H.
+    - exists k. split.
+      + symmetry; assumption.
+      + constructor; assumption.
+    - inversion_clear IHMapsToA.
+      inversion_clear H0.
+      exists x0. split.
+      + assumption.
+      + constructor. assumption.
+  Qed.
 
   Lemma mapi_2 : forall (elt elt':Type)(m: t elt)(x:key)
                             (f:key->elt->elt'), In x (mapi f m) -> In x m.
-  Admitted.
+    intros.
+    remember (mapi f m) as m'.
+    generalize dependent m.
+    unfold In in H. inversion H. clear H. induction H0.
+    - intros.
+      destruct m as [|(k',v') m]; inversion Heqm'; subst; clear Heqm'.
+      rewrite In_cons. left. assumption.
+    - intros.
+      destruct m as [|(k',v'') m]; inversion Heqm'; subst; clear Heqm'.
+      rewrite In_cons. right. apply IHMapsToA. reflexivity.
+  Qed.
 
   Lemma map2_1 : forall (elt elt' elt'':Type)(m: t elt)(m': t elt')
 	                        (x:key)(f:option elt->option elt'->option elt''),
@@ -840,10 +871,24 @@ Module MakeRaw (X:DecidableType) <: WRawMaps X.
                        In x (map2 f m m') -> In x m \/ In x m'.
   Admitted.
 
-  Instance map_ok A A' s (g: A -> A') `(Ok A s): Ok (map g s).
-  Admitted.
   Instance mapi_ok A A' s (g: key -> A -> A') `(Ok A s): Ok (mapi g s).
-  Admitted.
+  Proof.
+    intros. induction H.
+    - constructor.
+    - simpl. constructor.
+      + intro contr. apply H. clear H.
+        apply mapi_2 in contr.
+        unfold In in contr. assumption.
+      + assumption.
+  Qed.
+ 
+  Instance map_ok A A' s (g: A -> A') `(Ok A s): Ok (map g s).
+  Proof.
+    unfold map.
+    apply mapi_ok.
+    assumption.
+  Qed.
+
   Instance map2_ok A A' A'' s s' 
           (g: option A -> option A' -> option A'') `(Ok A s): Ok (map2 g s s').
   Admitted.

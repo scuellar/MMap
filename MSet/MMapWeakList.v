@@ -292,9 +292,8 @@ Module MakeRaw (X:DecidableType) <: WRawMaps X.
 
   Global Instance isok_Ok l : isok l = true -> Ok l | 10.
   Proof.
-    intros. apply <- isok_iff; auto.
+    intro P. apply isok_iff. exact P.
   Qed.
-
 
   Lemma add_spec1: forall s k k' v `{Ok s},
      X.eq k k' -> MapsTo k v (add k' v s).

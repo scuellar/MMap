@@ -899,7 +899,6 @@ Module Raw2Maps (O:OrderedType)(M:RawMaps O) <: Maps with Module E := O.
   Include Raw2MapsOn O M.
 End Raw2Maps.
 
-(*
 (** It is in fact possible to provide an ordering on sets with
     very little information on them (more or less only the [In]
     predicate). This generic build of ordering is in fact not
@@ -1189,4 +1188,3 @@ Module MakeListOrdering (O:OrderedType).
 
 End MakeListOrdering.
 
-*)

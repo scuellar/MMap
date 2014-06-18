@@ -331,11 +331,11 @@ Module Type MapsOn (E : OrderedType).
     Variable k k' : key.
     Variable v v' : A.
 
-    Parameter lt: t A -> t A -> Prop.
+    Parameter lt : t A -> t A -> Prop.
     Global Declare Instance lt_strorder : StrictOrder lt.
-    Global Declare Instance lt_compat : Proper (Logic.eq==>Logic.eq==>iff) lt.
+    Global Declare Instance lt_compat : Proper (@eq _ ==> @eq _ ==> iff) lt.
 
-    Parameter compare_spec : CompSpec Logic.eq lt m m' (compare m m').
+    Parameter compare_spec : CompSpec (@eq _) lt m m' (compare m m').
 
     (** Additional specification of [elements] *)
     Parameter elements_spec2 : sort (fun p1 p2 => E.lt (fst p1) (fst p2)) (elements m).
@@ -795,10 +795,10 @@ Module Type RawMaps (E : OrderedType).
 
   Parameter lt: t A -> t A -> Prop.
   Global Declare Instance lt_strorder : StrictOrder lt.
-  Global Declare Instance lt_compat : Proper (Logic.eq==>Logic.eq==>iff) lt.
+  Global Declare Instance lt_compat : Proper (@eq _ ==> @eq _ ==>iff) lt.
   
   (** Specification of [compare] *)
-  Parameter compare_spec : forall `{Ok _ m, Ok _ m'}, CompSpec Logic.eq lt m m' (compare m m').
+  Parameter compare_spec : forall `{Ok _ m, Ok _ m'}, CompSpec (@eq _) lt m m' (compare m m').
 
   (** Additional specification of [elements] *)
   Parameter elements_spec2 : forall `{Ok _ m}, 
@@ -847,23 +847,15 @@ Module Raw2MapsOn (O:OrderedType)(M:RawMaps O) <: MapsOn O.
            intros. transitivity y; auto.
     Qed.
 
-    Instance lt_compat : Proper (Logic.eq==>Logic.eq==>iff) (@lt A).
-    Admitted.
-    (*
+    Instance lt_compat : Proper (@eq A ==> @eq A==> iff) lt.
     Proof.
-      repeat red. unfold eq, lt.
-      intros (s1,p1) (s2,p2) E (s1',p1') (s2',p2') E'; simpl. 
-      change (M.eq s1 s2) in E.
-      change (M.eq s1' s2') in E'.
-      rewrite E,E'; intuition.
+      clear; add_morphism_tactic; intros; apply M.lt_compat; assumption.
     Qed.
-    *)
 
-    Lemma compare_spec : CompSpec Logic.eq lt m m' (compare m m').
-    Admitted.
-    (*
-    Proof. unfold compare; destruct (@M.compare_spec A m m' _ _); auto. Qed.
-     *)
+    Lemma compare_spec : CompSpec (@eq _) lt m m' (compare m m').
+    Proof.
+      clear; unfold compare; destruct (@M.compare_spec A m m' _ _); now auto.
+    Qed.
 
     (** Additional specification of [elements] *)
     Lemma elements_spec2 : sort (fun p1 p2 => O.lt (fst p1) (fst p2)) (elements m).

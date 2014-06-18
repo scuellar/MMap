@@ -826,12 +826,12 @@ Module MakeRaw (X:DecidableType) <: WRawMaps X.
   End ForNotations.
 
 
-  Lemma map_1 : forall (elt elt':Type)(m: t elt)(x:key)(e:elt)(f:elt->elt'),
+  Lemma map_spec1 : forall (elt elt':Type)(m: t elt)(x:key)(e:elt)(f:elt->elt'),
                       MapsTo x e m -> MapsTo x (f e) (map f m).
     intros. induction H; constructor; assumption.
   Qed.
 
-  Lemma map_2 : forall (elt elt':Type)(m: t elt)(x:key)(f:elt->elt'),
+  Lemma map_spec2 : forall (elt elt':Type)(m: t elt)(x:key)(f:elt->elt'),
                       In x (map f m) -> In x m.
     intros.
     remember (map f m) as m'.
@@ -845,7 +845,7 @@ Module MakeRaw (X:DecidableType) <: WRawMaps X.
       rewrite In_cons. right. apply IHIn. reflexivity.
   Qed.
       
-  Lemma mapi_1 : forall (elt elt':Type)(m: t elt)(x:key)(e:elt)
+  Lemma mapi_spec1 : forall (elt elt':Type)(m: t elt)(x:key)(e:elt)
                         (f:key->elt->elt'), MapsTo x e m ->
                                             exists y, X.eq y x /\ MapsTo x (f y e) (mapi f m).
     intros.
@@ -862,7 +862,7 @@ Module MakeRaw (X:DecidableType) <: WRawMaps X.
 
 
 
-  Lemma mapi_2 : forall (elt elt':Type)(m: t elt)(x:key)
+  Lemma mapi_spec2 : forall (elt elt':Type)(m: t elt)(x:key)
                             (f:key->elt->elt'), In x (mapi f m) -> In x m.
     intros.
     remember (mapi f m) as m'.
@@ -876,13 +876,13 @@ Module MakeRaw (X:DecidableType) <: WRawMaps X.
       rewrite In_cons. right. apply IHIn. reflexivity.
   Qed.
 
-  Lemma map2_1 : forall (elt elt' elt'':Type)(m: t elt)(m': t elt')
+  Lemma map2_spec1 : forall (elt elt' elt'':Type)(m: t elt)(m': t elt')
 	                        (x:key)(f:option elt->option elt'->option elt''),
 	                   In x m \/ In x m' ->
                        find x (map2 f m m') = f (find x m) (find x m').
   Admitted.
 
-  Lemma map2_2 : forall (elt elt' elt'':Type)(m: t elt)(m': t elt')
+  Lemma map2_spec2 : forall (elt elt' elt'':Type)(m: t elt)(m': t elt')
 	                        (x:key)(f:option elt->option elt'->option elt''),
                        In x (map2 f m m') -> In x m \/ In x m'.
   Admitted.
@@ -893,7 +893,7 @@ Module MakeRaw (X:DecidableType) <: WRawMaps X.
     - constructor.
     - simpl. constructor.
       + intro contr. apply H. clear H.
-        apply mapi_2 in contr.
+        apply mapi_spec2 in contr.
         unfold In in contr. assumption.
       + assumption.
   Qed.

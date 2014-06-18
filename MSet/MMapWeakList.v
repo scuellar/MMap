@@ -1,3 +1,4 @@
+
 (***********************************************************************)
 (*  v      *   The Coq Proof Assistant  /  The Coq Development Team    *)
 (* <O___,, *        INRIA-Rocquencourt  &  LRI-CNRS-Orsay              *)
@@ -127,6 +128,16 @@ Module Ops (X: DecidableType) <: WOps X.
       | x::_ => Some x
      end.
   End Foo.
+
+  Definition map : forall A A', (A -> A') -> t A -> t A'.
+  Admitted.
+
+  Definition mapi : forall A A', (key -> A -> A') -> t A -> t A'.
+  Admitted.
+
+  Definition map2 : forall A A' A'', (option A -> option A' -> option A'') -> t A -> t A' ->  t A''.
+  Admitted.
+
 End Ops.
 
 (** ** Proofs of set operation specifications. *)
@@ -795,12 +806,47 @@ Module MakeRaw (X:DecidableType) <: WRawMaps X.
   Lemma choose_spec2 : forall s , choose s = None -> Empty s.
   Admitted.
 
-
-
   (* Definition In := InA X.eq. *)
   Definition eq := Equal.
   Instance eq_equiv : Equivalence eq := _. Admitted.
   End ForNotations.
+
+
+  Lemma map_1 : forall (elt elt':Type)(m: t elt)(x:key)(e:elt)(f:elt->elt'),
+                      MapsTo x e m -> MapsTo x (f e) (map f m).
+  Admitted.
+
+  Lemma map_2 : forall (elt elt':Type)(m: t elt)(x:key)(f:elt->elt'),
+                      In x (map f m) -> In x m.
+  Admitted.
+
+  Lemma mapi_1 : forall (elt elt':Type)(m: t elt)(x:key)(e:elt)
+                        (f:key->elt->elt'), MapsTo x e m ->
+                                            exists y, X.eq y x /\ MapsTo x (f y e) (mapi f m).
+  Admitted.
+
+  Lemma mapi_2 : forall (elt elt':Type)(m: t elt)(x:key)
+                            (f:key->elt->elt'), In x (mapi f m) -> In x m.
+  Admitted.
+
+  Lemma map2_1 : forall (elt elt' elt'':Type)(m: t elt)(m': t elt')
+	                        (x:key)(f:option elt->option elt'->option elt''),
+	                   In x m \/ In x m' ->
+                       find x (map2 f m m') = f (find x m) (find x m').
+  Admitted.
+
+  Lemma map2_2 : forall (elt elt' elt'':Type)(m: t elt)(m': t elt')
+	                        (x:key)(f:option elt->option elt'->option elt''),
+                       In x (map2 f m m') -> In x m \/ In x m'.
+  Admitted.
+
+  Instance map_ok A A' s (g: A -> A') `(Ok A s): Ok (map g s).
+  Admitted.
+  Instance mapi_ok A A' s (g: key -> A -> A') `(Ok A s): Ok (mapi g s).
+  Admitted.
+  Instance map2_ok A A' A'' s s' 
+          (g: option A -> option A' -> option A'') `(Ok A s): Ok (map2 g s s').
+  Admitted.
 End MakeRaw.
 
 (** * Encapsulation

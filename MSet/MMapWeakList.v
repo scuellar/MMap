@@ -185,6 +185,20 @@ Module MakeRaw (X:DecidableType) <: WRawMaps X.
      * inversion H0. exists x0. constructor. assumption.
   Qed.    
 
+  Lemma In_ind :
+    forall (P : key -> t A -> Prop), 
+    (forall k k' v m, X.eq k k' -> P k ((k',v)::m)) ->
+    (forall k k' v m, P  k m -> P k ((k',v)::m)) ->
+    forall k m, (In k m -> P k m).
+  Proof.
+    intros.
+    unfold In in H1.
+    inversion_clear H1.
+    induction H2.
+    - apply H; assumption.
+    - apply H0; assumption.
+  Qed.
+
   Definition Empty m := forall k a, ~ MapsTo k a m.
 
   Definition eq_key (p p':key*A) := X.eq (fst p) (fst p').
@@ -822,13 +836,13 @@ Module MakeRaw (X:DecidableType) <: WRawMaps X.
     intros.
     remember (map f m) as m'.
     generalize dependent m.
-    unfold In in H. inversion H. clear H. induction H0.
+    induction H using In_ind.
     - intros.
-      destruct m as [|(k',v') m]; inversion Heqm'; subst; clear Heqm'.
+      destruct m0 as [|(k'',v') m0]; inversion Heqm'; subst; clear Heqm'.
       rewrite In_cons. left. assumption.
     - intros.
-      destruct m as [|(k',v'') m]; inversion Heqm'; subst; clear Heqm'.
-      rewrite In_cons. right. apply IHMapsToA. reflexivity.
+      destruct m0 as [|(k'',v'') m0]; inversion Heqm'; subst; clear Heqm'.
+      rewrite In_cons. right. apply IHIn. reflexivity.
   Qed.
       
   Lemma mapi_1 : forall (elt elt':Type)(m: t elt)(x:key)(e:elt)
@@ -846,18 +860,20 @@ Module MakeRaw (X:DecidableType) <: WRawMaps X.
       + constructor. assumption.
   Qed.
 
+
+
   Lemma mapi_2 : forall (elt elt':Type)(m: t elt)(x:key)
                             (f:key->elt->elt'), In x (mapi f m) -> In x m.
     intros.
     remember (mapi f m) as m'.
     generalize dependent m.
-    unfold In in H. inversion H. clear H. induction H0.
+    induction H using In_ind.
     - intros.
-      destruct m as [|(k',v') m]; inversion Heqm'; subst; clear Heqm'.
+      destruct m0 as [|(k'',v') m0]; inversion Heqm'; subst; clear Heqm'.
       rewrite In_cons. left. assumption.
     - intros.
-      destruct m as [|(k',v'') m]; inversion Heqm'; subst; clear Heqm'.
-      rewrite In_cons. right. apply IHMapsToA. reflexivity.
+      destruct m0 as [|(k'',v'') m0]; inversion Heqm'; subst; clear Heqm'.
+      rewrite In_cons. right. apply IHIn. reflexivity.
   Qed.
 
   Lemma map2_1 : forall (elt elt' elt'':Type)(m: t elt)(m': t elt')

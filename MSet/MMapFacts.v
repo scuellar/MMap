@@ -13,7 +13,7 @@
   different styles: equivalence and boolean equalities.
 *)
 
-Require Import Bool DecidableType DecidableTypeEx OrderedType Morphisms.
+Require Import Bool DecidableType DecidableTypeEx OrderedType Morphisms OrdersLists.
 Require Export MMapInterface.
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -1820,9 +1820,8 @@ Admitted.
 End WProperties_fun.
 
 (** * Same Properties for self-contained weak maps and for full maps *)
-(* TODO: I do not know shiz about modules and imports...*)
-(*
-Module WProperties (M:WS) := WProperties_fun M.E M.
+
+Module WProperties (M:WMaps) := WProperties_fun M.E M.
 Module Properties := WProperties.
 
 (** * Properties specific to maps with ordered keys *)
@@ -1846,10 +1845,12 @@ Module OrdProperties (M:Maps).
   Definition Above x (m:t elt) := forall y, In y m -> E.lt y x.
   Definition Below x (m:t elt) := forall y, In y m -> E.lt x y.
 
+  (*
   Section Elements.
 
   Lemma sort_equivlistA_eqlistA : forall l l' : list (key*elt),
    sort ltk l -> sort ltk l' -> equivlistA eqke l l' -> eqlistA eqke l l'.
+  Admitted.
   Proof.
   apply SortA_equivlistA_eqlistA; eauto with *.
   Qed.
@@ -2019,7 +2020,6 @@ Module OrdProperties (M:Maps).
   destruct x; do 2 rewrite <- elements_mapsto_iff.
   do 2 rewrite find_mapsto_iff; rewrite H; split; auto.
   Qed.
-
   End Elements.
 
   Section Min_Max_Elt.
@@ -2252,9 +2252,7 @@ Module OrdProperties (M:Maps).
   Qed.
 
   End Fold_properties.
-
+ *)
  End Elt.
 
 End OrdProperties.
-
-*)

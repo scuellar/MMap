@@ -111,7 +111,7 @@ Qed.
 
 Lemma equal_iff : forall m m' cmp, Equivb cmp m m' <-> equal cmp m m' = true.
 Proof.
-split; [apply equal_1|apply equal_2].
+split; [apply equal_spec1|apply equal_spec2].
 Qed.
 
 Lemma empty_mapsto_iff : forall x e, MapsTo x e (empty elt) <-> False.
@@ -908,7 +908,7 @@ Module WProperties_fun (E:DecidableType)(M: WMapsOn E).
   rewrite add_mapsto_iff, InA_cons, <- IH.
   unfold eq_key_elt at 1; simpl.
   split; destruct 1 as [H|H]; try (intuition;fail).
-  destruct (eq_dec k k'); [left|right]; split; auto. apply E.eq_equiv; auto.
+  destruct (E.eq_dec k k'); [left|right]; split; auto. apply E.eq_equiv; auto.
   contradict Hnotin.
   apply InA_eqke_eqk with k e; intuition.
   intro; apply E.eq_equiv in H0; auto.
@@ -924,7 +924,7 @@ Module WProperties_fun (E:DecidableType)(M: WMapsOn E).
   inversion_clear Hnodup as [| ? ? Hnotin Hnodup'].
   specialize (IH k Hnodup'); clear Hnodup'.
   rewrite add_o, IH.
-  unfold eqb; do 2 destruct eq_dec; auto; elim n; eauto.
+  unfold eqb; do 2 destruct E.eq_dec; auto; elim n; eauto.
   apply E.eq_equiv in e; contradiction.
   apply E.eq_equiv in e; contradiction.
   Qed.
@@ -993,7 +993,7 @@ Module WProperties_fun (E:DecidableType)(M: WMapsOn E).
    apply InA_eqke_eqk with k e'; auto. apply E.eq_equiv.
    rewrite <- of_list_1; auto.
    intro k'. rewrite Hsame, add_o, of_list_1b. simpl.
-   unfold eqb. do 2 destruct eq_dec; auto; elim n; eauto; apply E.eq_equiv; auto.
+   unfold eqb. do 2 destruct E.eq_dec; auto; elim n; eauto; apply E.eq_equiv; auto.
    inversion_clear Hdup; auto.
   apply IHl.
    intros; eapply Hstep'; eauto.
@@ -1354,7 +1354,7 @@ Module WProperties_fun (E:DecidableType)(M: WMapsOn E).
   case_eq (f k e); intros Hfke; simpl;
    rewrite !add_mapsto_iff, IH; clear IH; intuition.
   rewrite <- Hfke; apply Hf; auto. apply E.eq_equiv; auto.
-  destruct (eq_dec k k') as [Hk|Hk]; [left|right]; auto.
+  destruct (E.eq_dec k k') as [Hk|Hk]; [left|right]; auto.
   elim Hn; exists e'; rewrite Hk; auto.
   assert (f k e = f k' e') by (apply Hf; auto). congruence.
   Qed.
@@ -1512,7 +1512,7 @@ Module WProperties_fun (E:DecidableType)(M: WMapsOn E).
   assert (Heq : Equal m (remove x m')).
    change (Equal m' (add x e m)) in Hadd. rewrite Hadd.
    intro k. rewrite remove_o, add_o.
-   destruct eq_dec as [He|Hne]; auto.
+   destruct E.eq_dec as [He|Hne]; auto.
    rewrite <- He, <- not_find_in_iff; auto.
   assert (H : MapsTo x e m').
    change (Equal m' (add x e m)) in Hadd; rewrite Hadd.
@@ -1525,7 +1525,7 @@ Module WProperties_fun (E:DecidableType)(M: WMapsOn E).
   change (Equal m1 (add x e (remove x m1))).
   intro k.
   rewrite add_o, remove_o.
-  destruct eq_dec as [He|Hne]; auto.
+  destruct E.eq_dec as [He|Hne]; auto.
   rewrite <- He; apply find_spec; auto.
   (* disjoint *)
   intros k (H1,H2). elim (Hdisj k). split; auto.
@@ -1543,7 +1543,7 @@ Module WProperties_fun (E:DecidableType)(M: WMapsOn E).
   change (Equal m2 (add x e (remove x m2))).
   intro k.
   rewrite add_o, remove_o.
-  destruct eq_dec as [He|Hne]; auto.
+  destruct E.eq_dec as [He|Hne]; auto.
   rewrite <- He; apply find_spec; auto.
   (* disjoint *)
   intros k (H1,H2). elim (Hdisj k). split; auto.

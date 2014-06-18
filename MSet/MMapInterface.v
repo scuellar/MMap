@@ -72,14 +72,14 @@ Module Type HasWOps (Import T:TypElt).
         of either [m] or [m']. The presence and value for a key [k] is
         determined by [f e e'] where [e] and [e'] are the (optional) bindings
         of [k] in [m] and [m']. *)
-    
+
     Parameter elements : t A -> list (key * A).
     (** [elements m] returns an assoc list corresponding to the bindings
         of [m], in any order. *)
-  
+
     Parameter cardinal : t A -> nat.
     (** [cardinal m] returns the number of bindings in [m]. *)
-    
+
     Parameter fold : forall X : Type, (key -> A -> X -> X) -> t A -> X -> X.
     (** [fold f m a] computes [(f kN vN ... (f k2 v2 (f k1 v1 a))...)],
         where [k1 ... kN] are the keys, and [v1 ... vN] the corresponding values
@@ -97,7 +97,7 @@ Module Type HasWOps (Import T:TypElt).
        * If so, there probably are facts about it missing from MMapFacts, as
          MMapFacts was based on the original FMap
     *)
-    
+
     Parameter singleton : key -> A -> t A.
     (** [singleton k v] returns the one-element map containing only the key [k]
         that maps to [v]. *)
@@ -139,9 +139,9 @@ Module Type HasWOps (Import T:TypElt).
         [m] that do not satisfy [p]. *)
 
     Parameter choose : t A -> option (key * A).
-  (** Return one key and value of the given map, or [None] if
-      the map is empty. Which key is chosen is unspecified.
-      Equal maps could return different elements. *)
+    (** Return one key and value of the given map, or [None] if
+        the map is empty. Which key is chosen is unspecified.
+        Equal maps could return different elements. *)
   End Types.
 End HasWOps.
 
@@ -162,106 +162,125 @@ Module Type WMapsOn (E : DecidableType).
   (** First, we ask for all the functions *)
   Include WOps E.
 
-  Section Foo.
-  Variable A : Type.
-
   (** Logical predicates *)
+  Section LogPred.
+    Variable A : Type.
 
-  Parameter MapsTo : key -> A -> t A -> Prop.
-  Declare Instance MapsTo_compat : Proper (E.eq==>eq==>eq==>iff) MapsTo.
+    Parameter MapsTo : key -> A -> t A -> Prop.
+    Declare Instance MapsTo_compat : Proper (E.eq==>eq==>eq==>iff) MapsTo.
 
-  Definition In (k:key)(m: t A) : Prop := exists e:A, MapsTo k e m.
-  Definition Empty m := forall k a, ~ MapsTo k a m.
+    Definition In (k:key)(m: t A) : Prop := exists e:A, MapsTo k e m.
+    Definition Empty m := forall k a, ~ MapsTo k a m.
 
-  Definition eq_key (p p':key*A) := E.eq (fst p) (fst p').
-  Definition eq_key_elt (p p':key*A) :=
-          E.eq (fst p) (fst p') /\ (snd p) = (snd p').
+    Definition eq_key (p p':key*A) := E.eq (fst p) (fst p').
+    Definition eq_key_elt (p p':key*A) :=
+      E.eq (fst p) (fst p') /\ (snd p) = (snd p').
 
 
-  (* TODO: Copy explanation from FMap *)
-  Definition Equal m m' := forall k, @find A k m = find k m'.
-  Definition Equiv (eq_elt: A -> A -> Prop) m m' :=
-         (forall k, In k m <-> In k m') /\
-         (forall k e e', MapsTo k e m -> MapsTo k e' m' -> eq_elt e e').
-  Definition Equivb (cmp: A -> A -> bool) := Equiv (Cmp cmp).
+    (** Equality of maps *)
 
-  Definition For_all (P : key -> A -> Prop) m := forall k a, MapsTo k a m -> P k a.
-  Definition Exists (P : key -> A -> Prop) m := exists k a, MapsTo k a m /\ P k a.
+    (** Caveat: there are at least three distinct equality predicates on maps.
+      - The simpliest (and maybe most natural) way is to consider keys up to
+        their equivalence [E.eq], but elements up to Leibniz equality, in
+        the spirit of [eq_key_elt] above. This leads to predicate [Equal].
+      - Unfortunately, this [Equal] predicate can't be used to describe
+        the [equal] function, since this function (for compatibility with
+        ocaml) expects a boolean comparison [cmp] that may identify more
+        elements than Leibniz. So logical specification of [equal] is done
+        via another predicate [Equivb]
+      - This predicate [Equivb] is quite ad-hoc with its boolean [cmp],
+        it can be generalized in a [Equiv] expecting a more general
+        (possibly non-decidable) equality predicate on elements *)
 
-  Definition eq : t A -> t A -> Prop := Equal.
+    Definition Equal m m' := forall k, @find A k m = find k m'.
+    Definition Equiv (eq_elt: A -> A -> Prop) m m' :=
+      (forall k, In k m <-> In k m') /\
+      (forall k e e', MapsTo k e m -> MapsTo k e' m' -> eq_elt e e').
+    Definition Equivb (cmp: A -> A -> bool) := Equiv (Cmp cmp).
 
-  (* Including IsEq and HasEqDec more hassle than it's worth:
-     can't instantiate these higher-order module types w/ "yourself",
-     since [t] has wrong type ([Type -> Type] instead of [Type]), and
-     creating a new module type parametrized by A -- how exactly
-     would we make that work, even? -- is just not worth the work.
+    Definition For_all (P : key -> A -> Prop) m := forall k a, MapsTo k a m -> P k a.
+    Definition Exists (P : key -> A -> Prop) m := exists k a, MapsTo k a m /\ P k a.
 
-     Contents copied outright instead *)
-  Global Declare Instance eq_equiv : Equivalence eq.
-  Parameter eq_dec : forall x y : t A, { eq x y } + { ~ eq x y }.
+    Definition eq : t A -> t A -> Prop := Equal.
 
-  (** Specifications of map operators *)
+    (** Including IsEq and HasEqDec more hassle than it's worth:
+        can't instantiate these higher-order module types w/ "yourself",
+        since [t] has wrong type ([Type -> Type] instead of [Type]), and
+        creating a new module type parametrized by A -- how exactly
+        would we make that work, even? -- is just not worth the work.
 
-  Section Spec.
+        Contents copied outright instead *)
+    Global Declare Instance eq_equiv : Equivalence eq.
+    Parameter eq_dec : forall x y : t A, { eq x y } + { ~ eq x y }.
 
-  Variable m m': t A.
-  Variable k k' : key.
-  Variable v v' : A.
-  Variable f : key -> A -> bool.
-  Notation compatb := (Proper (E.eq==>Logic.eq==>Logic.eq)) (only parsing).
+    (** Specifications of map operators *)
 
-  Parameter MapsTo_spec : E.eq k k' -> MapsTo k v m -> MapsTo k' v m.
+    Section Spec.
 
-  Parameter unique: MapsTo k v m -> MapsTo k v' m -> v = v'.
+      Variable m m' m'': t A.
+      Variable k k' k'': key.
+      Variable v v' v'': A.
+      Variable f : key -> A -> bool.
+      Notation compatb := (Proper (E.eq==>Logic.eq==>Logic.eq)) (only parsing).
 
-  Parameter find_spec : find k m = Some v <-> MapsTo k v m.
-  Parameter mem_spec : mem k m = true <-> In k m.
-  Section EqSpec.
-     Variable cmp : A -> A -> bool.
-     Parameter equal_1 : Equivb cmp m m' -> equal cmp m m' = true.
-     Parameter equal_2 : equal cmp m m' = true -> Equivb cmp m m'.
-  End EqSpec.
+      (* Keys in the map are unique *)
+      (* TODO: is this not elements_spec2w? *)
+      Parameter unique: MapsTo k v m -> MapsTo k v' m -> v = v'.
 
-  Parameter empty_spec : Empty (empty A).
-  Parameter is_empty_spec : is_empty m = true <-> Empty m.
-  (* Parameter add_spec : In k1 (add k2 v m) <-> E.eq y x \/ In y m. *)
-  Parameter add_spec1: E.eq k k' -> MapsTo k v (add k' v m).
-  Parameter add_spec2: ~ E.eq k k' -> (MapsTo k v (add k' v' m) <-> MapsTo k v m).
+      Parameter MapsTo_spec : E.eq k k' -> MapsTo k v m -> MapsTo k' v m.
 
-  Parameter remove_spec1: E.eq k k' -> ~ In k (remove k' m).
-  Parameter remove_spec2: ~ E.eq k k' -> (MapsTo k' v (remove k m) <-> MapsTo k' v m).
+      Parameter find_spec : find k m = Some v <-> MapsTo k v m.
+      Parameter mem_spec : mem k m = true <-> In k m.
+      Section EqSpec.
+        Variable cmp : A -> A -> bool.
+        Parameter equal_spec1 : Equivb cmp m m' -> equal cmp m m' = true.
+        Parameter equal_spec2 : equal cmp m m' = true -> Equivb cmp m m'.
+      End EqSpec.
 
-  Parameter singleton_spec: E.eq k k' <-> MapsTo k v (singleton k' v).
+      Parameter empty_spec : Empty (empty A).
+      Parameter is_empty_spec : is_empty m = true <-> Empty m.
 
-  (*
-  Parameter union_spec : In x (union m m') <-> In x m \/ In x m'.
-  Parameter inter_spec : In x (inter m m') <-> In x m /\ In x m'.
-  Parameter diff_spec : In x (diff m m') <-> In x m /\ ~In x m'.
-  *)
+      Parameter add_spec1: E.eq k k' -> MapsTo k v (add k' v m).
+      Parameter add_spec2: ~ E.eq k k' -> (MapsTo k v (add k' v' m) <-> MapsTo k v m).
 
-  Parameter fold_spec : forall (X : Type) (i : X) (f : key -> A -> X -> X),
-    fold f m i = fold_left (fun a p => f (fst p) (snd p) a ) (elements m) i.
-  Parameter cardinal_spec : cardinal m = length (elements m).
-  Parameter filter_spec : compatb f ->
-    (MapsTo k v (filter f m) <-> MapsTo k v m /\ f k v = true).
-  Parameter for_all_spec : compatb f ->
-    (for_all f m = true <-> For_all (fun k v => f k v = true) m).
-  Parameter exists_spec : compatb f ->
-    (exists_ f m = true <-> Exists (fun k v => f k v = true) m).
-  Parameter partition_spec1 : compatb f ->
-    Equal (fst (partition f m)) (filter f m).
-  Parameter partition_spec2 : compatb f ->
-    Equal (snd (partition f m)) (filter (fun k x => negb (f k x)) m).
-  
-  Parameter elements_spec1 : InA eq_key_elt (k, v) (elements m) <-> MapsTo k v m.
-  (** When compared with ordered maps, here comes the only
-      property that is really weaker: *)
-  Parameter elements_spec2w : NoDupA eq_key (elements m).
-  Parameter choose_spec1 : choose m = Some (k,v) -> MapsTo k v m.
-  Parameter choose_spec2 : choose m = None -> Empty m.
+      Parameter remove_spec1: E.eq k k' -> ~ In k (remove k' m).
+      Parameter remove_spec2: ~ E.eq k k' -> (MapsTo k' v (remove k m) <-> MapsTo k' v m).
 
-  End Spec.
-  End Foo.
+
+      Parameter fold_spec : forall (X : Type) (i : X) (f : key -> A -> X -> X),
+                              fold f m i = fold_left (fun a p => f (fst p) (snd p) a ) (elements m) i.
+      Parameter cardinal_spec : cardinal m = length (elements m).
+
+      Parameter elements_spec1 : InA eq_key_elt (k, v) (elements m) <-> MapsTo k v m. 
+      (** When compared with ordered maps, here comes the only
+          property that is really weaker: *)
+      Parameter elements_spec2w : NoDupA eq_key (elements m).
+
+      (* TODO: all of these are new when comparing to FMap *)
+      Parameter singleton_spec: E.eq k k' <-> MapsTo k v (singleton k' v).
+
+      (*
+      Parameter union_spec : In x (union m m') <-> In x m \/ In x m'.
+      Parameter inter_spec : In x (inter m m') <-> In x m /\ In x m'.
+      Parameter diff_spec : In x (diff m m') <-> In x m /\ ~In x m'.
+      *)
+      (* TODO: Isn't subset_spec missing? *)
+      Parameter filter_spec : compatb f ->
+                              (MapsTo k v (filter f m) <-> MapsTo k v m /\ f k v = true).
+      Parameter for_all_spec : compatb f ->
+                               (for_all f m = true <-> For_all (fun k v => f k v = true) m).
+      Parameter exists_spec : compatb f ->
+                              (exists_ f m = true <-> Exists (fun k v => f k v = true) m).
+      Parameter partition_spec1 : compatb f ->
+                                  Equal (fst (partition f m)) (filter f m).
+      Parameter partition_spec2 : compatb f ->
+                                  Equal (snd (partition f m)) (filter (fun k x => negb (f k x)) m).
+      
+      Parameter choose_spec1 : choose m = Some (k,v) -> MapsTo k v m.
+      Parameter choose_spec2 : choose m = None -> Empty m.
+
+    End Spec.
+  End LogPred.
 
 End WMapsOn.
 
@@ -522,9 +541,33 @@ Module Type WRawMaps (E : DecidableType).
   Parameter elements_spec2w : forall `{Ok A s}, NoDupA eq_key (elements s).
   Parameter choose_spec1 : choose s = Some (k,v) -> MapsTo k v s.
   Parameter choose_spec2 : choose s = None -> Empty s.
-
   End Spec.
   End Foo.
+
+  (* TODO: beautify names! also, these need some Oks, probably*)
+  (** Specification of [map] *)
+  Parameter map_1 : forall (elt elt':Type)(m: t elt)(x:key)(e:elt)(f:elt->elt'),
+                      MapsTo x e m -> MapsTo x (f e) (map f m).
+  Parameter map_2 : forall (elt elt':Type)(m: t elt)(x:key)(f:elt->elt'),
+                      In x (map f m) -> In x m.
+
+  (** Specification of [mapi] *)
+  Parameter mapi_1 : forall (elt elt':Type)(m: t elt)(x:key)(e:elt)
+                            (f:key->elt->elt'), MapsTo x e m ->
+                                                exists y, E.eq y x /\ MapsTo x (f y e) (mapi f m).
+  Parameter mapi_2 : forall (elt elt':Type)(m: t elt)(x:key)
+                            (f:key->elt->elt'), In x (mapi f m) -> In x m.
+
+  (** Specification of [map2] *)
+  Parameter map2_1 : forall (elt elt' elt'':Type)(m: t elt)(m': t elt')
+	                        (x:key)(f:option elt->option elt'->option elt''),
+	                   In x m \/ In x m' ->
+                       find x (map2 f m m') = f (find x m) (find x m').
+
+  Parameter map2_2 : forall (elt elt' elt'':Type)(m: t elt)(m': t elt')
+	                        (x:key)(f:option elt->option elt'->option elt''),
+                       In x (map2 f m m') -> In x m \/ In x m'.
+
 
   (** All operations are compatible with the well-formed predicate. *)
   (* This needs to live outside of the Section with Variable A *)
@@ -540,6 +583,11 @@ Module Type WRawMaps (E : DecidableType).
   Declare Instance filter_ok A s f `(Ok A s) : Ok (filter f s).
   Declare Instance partition_ok1 A s f `(Ok A s) : Ok (fst (partition f s)).
   Declare Instance partition_ok2 A s f `(Ok A s) : Ok (snd (partition f s)).
+
+  Declare Instance map_ok A A' s (g: A -> A') `(Ok A s): Ok (map g s).
+  Declare Instance mapi_ok A A' s (g: key -> A -> A') `(Ok A s): Ok (mapi g s).
+  Declare Instance map2_ok A A' A'' s s' 
+          (g: option A -> option A' -> option A'') `(Ok A s): Ok (map2 g s s').
 
 
 End WRawMaps.
@@ -559,7 +607,7 @@ Module WRaw2MapsOn (E:DecidableType)(M:WRawMaps E) <: WMapsOn E.
  Hint Resolve is_ok : typeclass_instances.
 
  Section Foo.
- Variable A : Type.
+ Variables A A' A'': Type.
 
  Definition mem (x : key)(s : t A) := M.mem x s.
  Definition find (x : key)(s : t A) := M.find x s.
@@ -584,7 +632,10 @@ Module WRaw2MapsOn (E:DecidableType)(M:WRawMaps E) <: WMapsOn E.
  Definition exists_ (f : key -> A -> bool)(s : t A) := M.exists_ f s.
  Definition partition (f : key -> A -> bool)(s : t A) : t A * t A :=
    let p := M.partition f s in (Mkt (fst p), Mkt (snd p)).
-
+ Definition map (f: A -> A')(l: t A) : t A' := Mkt (M.map f l).
+ Definition mapi (f: key -> A -> A')(l: t A) : t A' := Mkt (M.mapi f l).
+ Definition map2 (f: option A -> option A' -> option A'')(l0: t A) (l1: t A') : t A'':= 
+   Mkt (M.map2 f l0 l1).
 
  Definition MapsTo (x : key) (v : A) (s : t A) := M.MapsTo x v s.(this).
  Definition In (k:key)(m: t A) : Prop := exists e:A, MapsTo k e m.
@@ -645,9 +696,9 @@ Module WRaw2MapsOn (E:DecidableType)(M:WRawMaps E) <: WMapsOn E.
 
   Lemma mem_spec : mem k s = true <-> In k s.
   Proof. exact (@M.mem_spec _ _ _ _). Qed.
-  Lemma equal_1 : Equivb cmp s s' -> equal cmp s s' = true.
+  Lemma equal_spec1 : Equivb cmp s s' -> equal cmp s s' = true.
   Proof. exact (@M.equal_1 _ _ _ _ _ _). Qed.
-  Lemma equal_2 : equal cmp s s' = true -> Equivb cmp s s'.
+  Lemma equal_spec2 : equal cmp s s' = true -> Equivb cmp s s'.
   Proof. exact (@M.equal_2 _ _ _ _ _ _). Qed.
   (*
   Lemma subset_spec : subset s s' = true <-> Subset s s'.

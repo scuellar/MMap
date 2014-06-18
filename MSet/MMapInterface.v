@@ -541,24 +541,24 @@ Module Type WRawMaps (E : DecidableType).
 
   (* TODO: Should this be in the section? *)
   (** Specification of [map] *)
-  Parameter map_1 : forall (A A':Type)(s: t A)(k:key)(e:A)(f:A->A'),
+  Parameter map_spec1 : forall (A A':Type)(s: t A)(k:key)(e:A)(f:A->A'),
                       MapsTo k e s -> MapsTo k (f e) (map f s).
-  Parameter map_2 : forall (A A':Type)(s: t A)(k:key)(f:A->A'),
+  Parameter map_spec2 : forall (A A':Type)(s: t A)(k:key)(f:A->A'),
                       In k (map f s) -> In k s.
 
   (** Specification of [mapi] *)
-  Parameter mapi_1 : forall (A A':Type)(m: t A)(x:key)(e:A)(f:key->A->A'), 
+  Parameter mapi_spec1 : forall (A A':Type)(m: t A)(x:key)(e:A)(f:key->A->A'), 
                        MapsTo x e m -> exists y, E.eq y x /\ MapsTo x (f y e) (mapi f m).
-  Parameter mapi_2 : forall (A A':Type)(m: t A)(x:key)
+  Parameter mapi_spec2 : forall (A A':Type)(m: t A)(x:key)
                             (f:key->A->A'), In x (mapi f m) -> In x m.
 
   (** Specification of [map2] *)
-  Parameter map2_1 : forall (A A' A'':Type)(m: t A)(m': t A')
+  Parameter map2_spec1 : forall (A A' A'':Type)(m: t A)(m': t A')
 	                        (x:key)(f:option A->option A'->option A''),
 	                   In x m \/ In x m' ->
                        find x (map2 f m m') = f (find x m) (find x m').
 
-  Parameter map2_2 : forall (A A' A'':Type)(m: t A)(m': t A')
+  Parameter map2_spec2 : forall (A A' A'':Type)(m: t A)(m': t A')
 	                        (x:key)(f:option A->option A'->option A''),
                        In x (map2 f m m') -> In x m \/ In x m'.
 
@@ -674,11 +674,14 @@ Module WRaw2MapsOn (E:DecidableType)(M:WRawMaps E) <: WMapsOn E.
      Variable k k' : key.
      Variable v v' : A.
      Variable f : key -> A -> bool. 
+     Variable g: A -> A'.
+     Variable gi : key -> A -> A'.
+     Variable g2 : option A -> option A' -> option A''.
      Variable cmp : A -> A -> bool.
      Notation compatb := (Proper (E.eq==>Logic.eq==>Logic.eq)) (only parsing).
 
      Lemma MapsTo_spec : E.eq k k' -> MapsTo k v s -> MapsTo k' v s.
-     Admitted. Print M.
+     Admitted.
 
      Lemma unique: MapsTo k v s -> MapsTo k v' s -> v = v'.
      Admitted.
@@ -748,11 +751,31 @@ Module WRaw2MapsOn (E:DecidableType)(M:WRawMaps E) <: WMapsOn E.
      Proof. exact (@M.choose_spec1 _ _ _ _). Qed.
      Lemma choose_spec2 : choose s = None -> Empty s.
      Proof. exact (@M.choose_spec2 _ _). Qed.
-
-     
    End Spec.
  End Defs.
-
+ (* TODO: Can this be in a section? *)
+ (* Map specs -- require MapsTo to be parameterized by type *)
+  Lemma map_spec1 : forall (A A':Type)(s: t A)(k:key)(e:A)(f:A->A'),
+                      MapsTo k e s -> MapsTo k (f e) (map f s).
+  Proof. exact M.map_spec1. Qed.
+  Lemma map_spec2 : forall (A A':Type)(s: t A)(k:key)(f:A->A'),
+                      In k (map f s) -> In k s.
+  Proof. exact M.map_spec2. Qed.
+  Lemma mapi_spec1 : forall (A A':Type)(m: t A)(x:key)(e:A)(f:key->A->A'), 
+                       MapsTo x e m -> exists y, E.eq y x /\ MapsTo x (f y e) (mapi f m).
+  Proof. exact M.mapi_spec1. Qed.
+  Lemma mapi_spec2 : forall (A A':Type)(m: t A)(x:key)
+                            (f:key->A->A'), In x (mapi f m) -> In x m.
+  Proof. exact M.mapi_spec2. Qed.
+  Lemma map2_spec1 : forall (A A' A'':Type)(m: t A)(m': t A')
+	                        (x:key)(f:option A->option A'->option A''),
+	                   In x m \/ In x m' ->
+                       find x (map2 f m m') = f (find x m) (find x m').
+  Proof. exact M.map2_spec1. Qed.
+  Lemma map2_spec2 : forall (A A' A'':Type)(m: t A)(m': t A')
+	                        (x:key)(f:option A->option A'->option A''),
+                       In x (map2 f m m') -> In x m \/ In x m'.
+  Proof. exact M.map2_spec2. Qed.
 End WRaw2MapsOn.
 
 Module WRaw2Maps (D:DecidableType)(M:WRawMaps D) <: WMaps with Module E := D.
@@ -762,8 +785,6 @@ End WRaw2Maps.
 
 (** Same approach for ordered sets *)
 Module Type RawMaps (E : OrderedType).
-  (* TODO: We have no coparison on maps *)
-  (* Include WRawMaps E <+ HasOrdOps <+ HasLt <+ IsStrOrder. *)
   Include WRawMaps E <+ HasOrdOps.
 
   Section Spec.
@@ -772,10 +793,12 @@ Module Type RawMaps (E : OrderedType).
   Variable k k' : key.
   Variable v v' : A.
 
-  (*
+  Parameter lt: t A -> t A -> Prop.
+  Global Declare Instance lt_strorder : StrictOrder lt.
+  Global Declare Instance lt_compat : Proper (Logic.eq==>Logic.eq==>iff) lt.
+  
   (** Specification of [compare] *)
-  Parameter compare_spec : forall `{Ok s, Ok s'}, CompSpec eq lt s s' (compare s s').
-  *)
+  Parameter compare_spec : forall `{Ok _ m, Ok _ m'}, CompSpec Logic.eq lt m m' (compare m m').
 
   (** Additional specification of [elements] *)
   Parameter elements_spec2 : forall `{Ok _ m}, 
@@ -806,66 +829,66 @@ Module Raw2MapsOn (O:OrderedType)(M:RawMaps O) <: MapsOn O.
   Include WRaw2MapsOn O M.
 
   (* TODO: We have no compare function *)
-  (* Definition compare {A : Type} (m m':t A) := M.compare m m'. *)
+  Definition compare {A : Type} (m m':t A) := M.compare m m'.
   Definition min_elt {A : Type} (m:t A) : option (key * A) := M.min_elt m.
   Definition max_elt {A : Type} (m:t A) : option (key * A) := M.max_elt m.
-  (* Definition lt {A : Type} (s s':t A) := M.lt s s'. *)
-
-  (*
-  (** Specification of [lt] *)
-  Instance lt_strorder : StrictOrder lt.
-  Proof. constructor ; unfold lt; red.
-    unfold complement. red. intros. apply (irreflexivity H).
-    intros. transitivity y; auto.
-  Qed.
-  *)
-
-  (*
-  Instance lt_compat : Proper (eq==>eq==>iff) lt.
-  Proof.
-  repeat red. unfold eq, lt.
-  intros (s1,p1) (s2,p2) E (s1',p1') (s2',p2') E'; simpl.
-  change (M.eq s1 s2) in E.
-  change (M.eq s1' s2') in E'.
-  rewrite E,E'; intuition.
-  Qed.
-  *)
+  Definition lt {A : Type} (s s':t A) := M.lt s s'.
 
   Section Spec.
-  Variable A : Type.
-  Variable m m' m'' : t A.
-  Variable k k' : key.
-  Variable v v' : A.
+    Variable A : Type.
+    Variable m m' m'' : t A.
+    Variable k k' : key.
+    Variable v v' : A.
 
-  (*
-  Lemma compare_spec : CompSpec eq lt s s' (compare s s').
-  Proof. unfold compare; destruct (@M.compare_spec s s' _ _); auto. Qed.
-  *)
+    (** Specification of [lt] *)
+    Instance lt_strorder : StrictOrder (@lt A).
+    Proof. constructor ; unfold lt; red.
+           unfold complement. red. intros. apply (irreflexivity H).
+           intros. transitivity y; auto.
+    Qed.
 
-  (** Additional specification of [elements] *)
-  Lemma elements_spec2 : sort (fun p1 p2 => O.lt (fst p1) (fst p2)) (elements m).
-  Proof. exact (@M.elements_spec2 _ _ _). Qed.
+    Instance lt_compat : Proper (Logic.eq==>Logic.eq==>iff) (@lt A).
+    Admitted.
+    (*
+    Proof.
+      repeat red. unfold eq, lt.
+      intros (s1,p1) (s2,p2) E (s1',p1') (s2',p2') E'; simpl. 
+      change (M.eq s1 s2) in E.
+      change (M.eq s1' s2') in E'.
+      rewrite E,E'; intuition.
+    Qed.
+    *)
 
-  (** Specification of [min_elt] *)
-  Lemma min_elt_spec1 : min_elt m = Some (k, v) -> MapsTo k v m.
-  Proof. exact (@M.min_elt_spec1 _ _ _ _). Qed.
-  Lemma min_elt_spec2 : min_elt m = Some (k, v) -> MapsTo k' v' m -> ~ O.lt k' k.
-  Proof. exact (@M.min_elt_spec2 _ _ _ _ _ _ _). Qed.
-  Lemma min_elt_spec3 : min_elt m = None -> Empty m.
-  Proof. exact (@M.min_elt_spec3 _ _). Qed.
+    Lemma compare_spec : CompSpec Logic.eq lt m m' (compare m m').
+    Admitted.
+    (*
+    Proof. unfold compare; destruct (@M.compare_spec A m m' _ _); auto. Qed.
+     *)
 
-  (** Specification of [max_elt] *)
-  Lemma max_elt_spec1 : max_elt m = Some (k, v) -> MapsTo k v m.
-  Proof. exact (@M.max_elt_spec1 _ _ _ _). Qed.
-  Lemma max_elt_spec2 : max_elt m = Some (k, v) -> MapsTo k' v' m -> ~ O.lt k k'.
-  Proof. exact (@M.max_elt_spec2 _ _ _ _ _ _ _). Qed.
-  Lemma max_elt_spec3 : max_elt m = None -> Empty m.
-  Proof. exact (@M.max_elt_spec3 _ _). Qed.
+    (** Additional specification of [elements] *)
+    Lemma elements_spec2 : sort (fun p1 p2 => O.lt (fst p1) (fst p2)) (elements m).
+    Proof. exact (@M.elements_spec2 _ _ _). Qed.
 
-  (** Additional specification of [choose] *)
-  Lemma choose_spec3 :
-    choose m = Some (k, v) -> choose m' = Some (k', v') -> Equal m m' -> O.eq k k'.
-  Proof. exact (@M.choose_spec3 _ _ _ _ _ _ _ _ _). Qed.
+    (** Specification of [min_elt] *)
+    Lemma min_elt_spec1 : min_elt m = Some (k, v) -> MapsTo k v m.
+    Proof. exact (@M.min_elt_spec1 _ _ _ _). Qed.
+    Lemma min_elt_spec2 : min_elt m = Some (k, v) -> MapsTo k' v' m -> ~ O.lt k' k.
+    Proof. exact (@M.min_elt_spec2 _ _ _ _ _ _ _). Qed.
+    Lemma min_elt_spec3 : min_elt m = None -> Empty m.
+    Proof. exact (@M.min_elt_spec3 _ _). Qed.
+
+    (** Specification of [max_elt] *)
+    Lemma max_elt_spec1 : max_elt m = Some (k, v) -> MapsTo k v m.
+    Proof. exact (@M.max_elt_spec1 _ _ _ _). Qed.
+    Lemma max_elt_spec2 : max_elt m = Some (k, v) -> MapsTo k' v' m -> ~ O.lt k k'.
+    Proof. exact (@M.max_elt_spec2 _ _ _ _ _ _ _). Qed.
+    Lemma max_elt_spec3 : max_elt m = None -> Empty m.
+    Proof. exact (@M.max_elt_spec3 _ _). Qed.
+
+    (** Additional specification of [choose] *)
+    Lemma choose_spec3 :
+      choose m = Some (k, v) -> choose m' = Some (k', v') -> Equal m m' -> O.eq k k'.
+    Proof. exact (@M.choose_spec3 _ _ _ _ _ _ _ _ _). Qed.
 
   End Spec.
 

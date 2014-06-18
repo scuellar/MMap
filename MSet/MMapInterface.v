@@ -335,7 +335,7 @@ Module Type MapsOn (E : OrderedType).
     Global Declare Instance lt_strorder : StrictOrder lt.
     Global Declare Instance lt_compat : Proper (@eq _ ==> @eq _ ==> iff) lt.
 
-    Parameter compare_spec : CompSpec (@eq _) lt m m' (compare m m').
+    Parameter compare_spec : CompSpec Logic.eq lt m m' (compare m m').
 
     (** Additional specification of [elements] *)
     Parameter elements_spec2 : sort (fun p1 p2 => E.lt (fst p1) (fst p2)) (elements m).
@@ -995,6 +995,7 @@ Module MakeMapOrdering (O:OrderedType)(Import M:MAPSTO O).
 
  Instance lt_strorder : StrictOrder lt.
  Proof.
+(*
   pose O.lt_strorder as oltsr.
   inversion oltsr.
   unfold Transitive, Irreflexive in *.
@@ -1018,7 +1019,7 @@ Module MakeMapOrdering (O:OrderedType)(Import M:MAPSTO O).
       apply lt_irrefl in H1.
       assumption.
       assumption.
-Admitted.
+Admitted.*)
 (* original proof follows. *)
 (*  intros t1 t2 t3 (k & v & EQ & [(MAP2,Pre)|(MAP2,Lex)])
                   (k' & v' & EQ' & [(MAP2',Pre')|(MAP2',Lex')]).
@@ -1150,80 +1151,89 @@ EQ & [(MAPSTO,Pre)|(MAPSTO,Lex)])
 
  SearchAbout O.lt.
       Print EmptyBetween.
-      
+*)      
   (* original proof *)
   split.
   (* irreflexive *)
-  intros s (x & _ & [(IN,Em)|(IN & y & IN' & LT & Be)]).
-  specialize (Em x IN); order.
-  specialize (Be x IN LT); order.
+  intros t (k & v & _ & [(M2,Em)|(M2 & k' & v' & M2' & LT & Be)]).
+  specialize (Em k v M2); order.
+  specialize (Be k v M2 LT); order.
   (* transitive *)
-  intros s1 s2 s3 (x & EQ & [(IN,Pre)|(IN,Lex)])
-                  (x' & EQ' & [(IN',Pre')|(IN',Lex')]).
+  intros t1 t2 t3 (k & v & EQ & [(M2,Pre)|(IM2,Lex)])
+                  (k1 & v1 & EQ' & [(M2k1,Pre')|(M2k1,Lex')]).
   (* 1) Pre / Pre --> Pre *)
-  assert (O.lt x x') by (specialize (Pre' x IN); auto).
-  exists x; split.
-  intros y Hy; rewrite <- (EQ' y); auto; order.
+  assert (O.lt k k1) by (specialize (Pre' k v M2); auto).
+  exists k; exists v; split.
+  intros k2 v2 Hk2; rewrite <- (EQ' k2); auto; order.
   left; split; auto.
-  rewrite <- (EQ' x); auto.
+  rewrite <- (EQ' k); auto.
   (* 2) Pre / Lex *)
-  elim_compare x x'.
+  elim_compare k k1.
   (* 2a) x=x' --> Pre *)
-  destruct Lex' as (y & INy & LT & Be).
-  exists y; split.
-  intros z Hz. split; intros INz.
-   specialize (Pre z INz). rewrite <- (EQ' z), <- (EQ z); auto; order.
-   specialize (Be z INz Hz). rewrite (EQ z), (EQ' z); auto; order.
+  destruct Lex' as (k2 & v2 & M2k2 & LT & Be).
+  exists k2; exists v2; split.
+  intros k3 v3 Hk3. split; intros M2k3.
+   specialize (Pre k3 v3 M2k3). rewrite <- (EQ' k3), <- (EQ k3); auto; order.
+   specialize (Be k3 v3 M2k3 Hk3). rewrite (EQ k3), (EQ' k3); auto; order.
   left; split; auto.
-  intros z Hz. transitivity x; auto; order.
+  intros k3 v3 Hk3.
+    transitivity k. unfold Below in Pre. apply (Pre k3 v3). assumption.
+    order.
   (* 2b) x<x' --> Pre *)
-  exists x; split.
-  intros z Hz. rewrite <- (EQ' z) by order; auto.
+  exists k; exists v; split.
+  intros k3 v3 Hk3. rewrite <- (EQ' k3) by order; auto.
   left; split; auto.
-  rewrite <- (EQ' x); auto.
+  rewrite <- (EQ' k); auto.
   (* 2c) x>x' --> Lex *)
-  exists x'; split.
-  intros z Hz. rewrite (EQ z) by order; auto.
+  exists k1; exists v1; split.
+  intros k2 v2 Hk2. rewrite (EQ k2) by order; auto.
   right; split; auto.
-  rewrite (EQ x'); auto.
+  rewrite (EQ k1); auto.
   (* 3) Lex / Pre --> Lex *)
-  destruct Lex as (y & INy & LT & Be).
-  specialize (Pre' y INy).
-  exists x; split.
-  intros z Hz. rewrite <- (EQ' z) by order; auto.
+  destruct Lex as (k2 & v2 & M2k2 & LT & Be).
+  specialize (Pre' k2 v2 M2k2).
+  exists k; exists v; split.
+  intros k3 v3 Hk3. rewrite <- (EQ' k3) by order; auto.
   right; split; auto.
-  exists y; repeat split; auto.
-  rewrite <- (EQ' y); auto.
-  intros z Hz LTz; apply Be; auto. rewrite (EQ' z); auto; order.
+  exists k2; exists v2; repeat split; auto.
+  rewrite <- (EQ' k2); auto.
+  intros k3 v3 Hk3 LTk3.
+    unfold EmptyBetween in Be. apply (Be k3 v3); auto. rewrite (EQ' k3); auto. order.
   (* 4) Lex / Lex *)
-  elim_compare x x'.
+  elim_compare k k1.
   (* 4a) x=x' --> impossible *)
-  destruct Lex as (y & INy & LT & Be).
-  setoid_replace x with x' in LT; auto.
-  specialize (Be x' IN' LT); order.
+  destruct Lex as (k2 & v2 & M2k2 & LT & Be).
+  setoid_replace k with k1 in LT; auto.
+  specialize (Be k1 v1 M2k1 LT); order.
   (* 4b) x<x' --> Lex *)
-  exists x; split.
-  intros z Hz. rewrite <- (EQ' z) by order; auto.
+  exists k; exists v; split.
+  intros k2 v2 Hk2.
+    unfold EquivBefore in EQ'. rewrite <- (EQ' k2). auto.
+    order.
   right; split; auto.
-  destruct Lex as (y & INy & LT & Be).
-  elim_compare y x'.
+  destruct Lex as (k2 & v2 & M2k2 & LT & Be).
+  elim_compare k2 k1.
    (* 4ba *)
-   destruct Lex' as (y' & Iny' & LT' & Be').
-   exists y'; repeat split; auto. order.
-   intros z Hz LTz. specialize (Be' z Hz LTz).
-    rewrite <- (EQ' z) in Hz by order.
-    apply Be; auto. order.
+   destruct Lex' as (k4 & v4 & M2k3 & LT' & Be').
+   exists k4; exists v4; repeat split; auto. order.
+   intros k3 v3 Hk3 LTk3. specialize (Be' k3 v3 Hk3 LTk3).
+    rewrite <- (EQ' k3) in Hk3 by order.
+    unfold EmptyBetween in Be. apply (Be k3 v3); auto. order.
    (* 4bb *)
-   exists y; repeat split; auto.
-   rewrite <- (EQ' y); auto.
-   intros z Hz LTz. apply Be; auto. rewrite (EQ' z); auto; order.
+   exists k2; exists v2; repeat split; auto.
+   rewrite <- (EQ' k2); auto.
+   intros k3 v3 Hk3 LTk3.
+     unfold EmptyBetween in Be.
+     apply (Be k3 v3); auto; rewrite (EQ' k3); auto; order.
    (* 4bc*)
-   assert (O.lt x' x) by auto. order.
+   assert (O.lt k1 k). 
+     unfold EmptyBetween in Be. apply (Be k1 v1). auto. 
+   order. order.
   (* 4c) x>x' --> Lex *)
-  exists x'; split.
-  intros z Hz. rewrite (EQ z) by order; auto.
+  exists k1; exists v1; split.
+  intros k3 v3 Hk3. rewrite (EQ k3) by order; auto.
   right; split; auto.
-  rewrite (EQ x'); auto.
+  rewrite (EQ k1); auto.
  Qed.
 
  Lemma lt_empty_r : forall s s', Empty s' -> ~ lt s s'.
@@ -1297,7 +1307,6 @@ Qed.
 
 End MakeMapOrdering.
 
-(*
 Module MakeListOrdering (O:OrderedType).
  Module MO:=OrderedTypeFacts O.
 

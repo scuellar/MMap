@@ -50,6 +50,8 @@ Module Type Ops (X:OrderedType)(Info:InfoTyp).
   Section Tree.
     Variable A:Type.
 
+    Arguments A : default implicits.
+
     Inductive tree: Type :=
     | Leaf : tree
     | Node : Info.t -> tree -> X.t -> A -> tree -> tree.
@@ -778,9 +780,9 @@ Proof.
  inversion_clear H0.
 Qed.
 
-Lemma elements_spec2' : forall t acc `{Ok t}, sort (RelProd X.lt (fun _ _ => True)) acc ->
+Lemma elements_spec2' : forall t acc `{Ok t}, sort (RelCompFun X.lt (@fst X.t A)) acc ->
  (forall k1 k2 v1 v2, InA (RelProd X.eq val_eq) (k1, v1) acc -> MapsToT k2 v2 t -> X.lt k2 k1) ->
- sort (RelProd X.lt (fun _ _ => True)) (elements_aux A acc t).
+ sort (RelCompFun X.lt (@fst X.t A)) (elements_aux A acc t).
 Proof.
  induction t as [| inf tl Hl k0 v0 tr Hr]; intros; simpl; intuition.
  inv.
@@ -790,14 +792,14 @@ Proof.
    eapply (@InA_InfA _ (RelProd X.eq val_eq)); eauto with *.
    intros.
    destruct y as [ky vy].
-   unfold RelProd, RelCompFun. simpl; split; auto. simpl.
+   unfold RelProd, RelCompFun. simpl.
    apply elements_spec1' in H.
    destruct H.
    - eapply H10; eauto.
    - eapply H1; eauto.
  + intros.
    inversion_clear H.
-   - unfold RelProd, RelCompFun in H3. destruct H3; simpl in H3, H.
+   - unfold RelProd, RelCompFun in H3. destruct H3. simpl in H3, H.
      apply (lt_tree_compat k1 k0 H tl tl Logic.eq_refl) in H9.
      eapply H9; eauto.
    - apply elements_spec1' in H3.
@@ -806,42 +808,43 @@ Proof.
      * eapply H1. eauto. apply InLeft. eauto.
 Qed.
 
-Lemma elements_spec2 : forall s `(Ok s), sort X.lt (elements s).
+Lemma elements_spec2 : forall t `(Ok t), sort (RelCompFun X.lt (@fst X.t A)) (elements A t).
 Proof.
  intros; unfold elements; apply elements_spec2'; auto.
  intros; inversion H0.
 Qed.
 Local Hint Resolve elements_spec2.
 
-Lemma elements_spec2w : forall s `(Ok s), NoDupA X.eq (elements s).
+Lemma elements_spec2w : forall t `(Ok t), NoDupA (RelProd X.eq val_eq) (elements A t).
 Proof.
  intros. eapply SortA_NoDupA; eauto with *.
+ unfold RelProd, RelCompFun. split; (destruct H0, H1; apply X.lt_compat; eauto).
 Qed.
 
 Lemma elements_aux_cardinal :
- forall s acc, (length acc + cardinal s)%nat = length (elements_aux acc s).
+ forall t acc, (length acc + cardinal A t)%nat = length (elements_aux A acc t).
 Proof.
- simple induction s; simpl; intuition.
+ simple induction t; simpl; intuition.
  rewrite <- H.
  simpl.
- rewrite <- H0. rewrite (Nat.add_comm (cardinal t0)).
+ rewrite <- H0. rewrite (Nat.add_comm (cardinal A t1)).
  now rewrite <- Nat.add_succ_r, Nat.add_assoc.
 Qed.
 
-Lemma elements_cardinal : forall s : tree, cardinal s = length (elements s).
+Lemma elements_cardinal : forall t : tree A, cardinal A t = length (elements A t).
 Proof.
  exact (fun s => elements_aux_cardinal s nil).
 Qed.
 
-Definition cardinal_spec (s:tree)(Hs:Ok s) := elements_cardinal s.
+Definition cardinal_spec (t:tree A)(Hs:Ok t) := elements_cardinal t.
 
 Lemma elements_app :
- forall s acc, elements_aux acc s = elements s ++ acc.
+ forall t acc, elements_aux A acc t = elements A t ++ acc.
 Proof.
- induction s; simpl; intros; auto.
- rewrite IHs1, IHs2.
+ induction t; simpl; intros; auto.
+ rewrite IHt1, IHt2.
  unfold elements; simpl.
- rewrite 2 IHs1, IHs2, !app_nil_r, !app_ass; auto.
+ rewrite 2 IHt1, IHt2, !app_nil_r, !app_ass; auto.
 Qed.
 
 Lemma elements_node c l x r :

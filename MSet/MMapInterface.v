@@ -1205,7 +1205,7 @@ Qed.
 
 End MakeMapOrdering.
 
-
+(*
 Module MakeListOrdering (O:OrderedType).
  Module MO:=OrderedTypeFacts O.
 
@@ -1282,4 +1282,4 @@ Module MakeListOrdering (O:OrderedType).
 
 End MakeListOrdering.
 
-*)
+*)*)

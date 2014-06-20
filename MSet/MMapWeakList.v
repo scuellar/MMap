@@ -646,36 +646,66 @@ Module MakeRaw (X:DecidableType) <: WRawMaps X.
   Lemma filter_spec : forall s k v f,
     Proper (X.eq==>Logic.eq==>Logic.eq) f ->
     (MapsTo k v (filter f s) <-> MapsTo k v s /\ f k v = true).
-  Admitted.
-
-  (*
-  Lemma filter_spec :
-   forall (s : t) (x : elt) (f : elt -> bool),
-   Proper (X.eq==>eq) f ->
-   (In x (filter f s) <-> In x s /\ f x = true).
   Proof.
-  induction s; simpl.
-  intuition; inv.
-  intros.
-  destruct (f a) eqn:E; rewrite ?InA_cons, IHs; intuition.
-  setoid_replace x with a; auto.
-  setoid_replace a with x in E; auto. congruence.
+    intros.
+    induction s as [|(k',v')].
+    simpl.
+    - split; intro H'; inversion H'; try inversion H0.
+    - simpl.
+      destruct (f k' v') eqn:Hf.
+      + repeat (rewrite MapsTo_cons).
+        intuition.
+        rewrite <- H4 in Hf.
+        rewrite <- H1 in Hf.
+        assumption.
+      + rewrite MapsTo_cons.
+        rewrite IHs.
+        intuition.
+        rewrite <- H3 in Hf.
+        rewrite <- H5 in Hf.
+        rewrite Hf in H4.
+        inversion H4.
   Qed.
-  *)
 
+  Lemma filter_In: forall f k l, ~ In k l -> ~ In k (filter f l).
+  Proof.
+    intros.
+    induction l as [|(k',v')]; simpl.
+    - apply H.
+    - destruct (f k' v').
+      + rewrite In_cons.
+        rewrite In_cons in H.
+        intuition.
+      + rewrite In_cons in H.
+        intuition.
+  Qed.  
+      
+  Lemma filter_NoDup: forall f l, NoDup l -> NoDup (filter f l).
+  Proof.
+    intros.
+    induction H.
+    - constructor.
+    - simpl.
+      destruct (f x v).
+      + constructor.
+        * apply filter_In. assumption.
+        * assumption.
+      + assumption.
+  Qed.
+      
   Global Instance filter_ok s f `(Ok s) : Ok (filter f s).
-  Admitted.
-  (*
   Proof.
-  induction s; simpl.
-  auto.
-  intros; inv.
-  case (f a); auto.
-  constructors; auto.
-  contradict H0.
-  eapply filter_spec'; eauto.
+    unfold Ok in H.
+    induction H.
+    - constructor.
+    - simpl.
+      destruct (f x v).
+      + constructor.
+        * apply filter_In. assumption.
+        * apply filter_NoDup. assumption.
+      + assumption.
   Qed.
-  *)
+
 
   Lemma for_all_spec : forall s f,
     Proper (X.eq==>Logic.eq==>Logic.eq) f ->

@@ -869,10 +869,21 @@ Module MakeRaw (X:DecidableType) <: WRawMaps X.
 
   Lemma choose_spec1 : forall s k v,
      choose s = Some (k,v) -> MapsTo k v s.
-  Admitted.
+  Proof.
+    intros.
+    destruct s as [|(k',v')].
+    - inversion H.
+    - inversion H. constructor. reflexivity.
+  Qed.
 
   Lemma choose_spec2 : forall s , choose s = None -> Empty s.
-  Admitted.
+  Proof.
+    intros.
+    destruct s as [|(k',v')].
+    - inversion H. apply empty_spec.
+    - inversion H.
+  Qed.
+
 
   (* Definition In := InA X.eq. *)
   Definition eq := Equal.

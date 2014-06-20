@@ -710,49 +710,73 @@ Module MakeRaw (X:DecidableType) <: WRawMaps X.
   Lemma for_all_spec : forall s f,
     Proper (X.eq==>Logic.eq==>Logic.eq) f ->
     (for_all f s = true <-> For_all (fun x a => f x a = true) s).
-  Admitted.
-
-  (*
-  Lemma for_all_spec :
-   forall (s : t) (f : elt -> bool),
-   Proper (X.eq==>eq) f ->
-   (for_all f s = true <-> For_all (fun x => f x = true) s).
   Proof.
-  unfold For_all; induction s; simpl.
-  intuition. inv.
-  intros; inv.
-  destruct (f a) eqn:F.
-  rewrite IHs; intuition. inv; auto.
-  setoid_replace x with a; auto.
-  split; intros H'; try discriminate.
-  intros.
-  rewrite <- F, <- (H' a); auto.
+    intros.
+    unfold For_all.
+    induction s as [|(k,v)].
+    - simpl. split; intro.
+      + intros k a contr. inversion contr.
+      + reflexivity.
+    - simpl.
+      destruct (f k v) eqn:Hf.
+      + split.
+        * intros Hfa k0 a HMt.
+          inversion HMt; subst; clear HMt.
+          rewrite H1. assumption.
+          apply IHs. assumption. assumption.
+        * intros Hfa.
+          apply IHs.
+          intros k0 a HMt.
+          apply Hfa.
+          constructor. assumption.
+      + split.
+        * intro contr. inversion contr.
+        * intro Hfa.
+          assert (MapsTo k v ((k, v) :: s)) by ( constructor; reflexivity).
+          specialize (Hfa k v H0).
+          rewrite Hf in Hfa. assumption.
   Qed.
-  *)
+          
+  Lemma exists_false_forall_true: forall A f (s : t A), 
+   (exists_ f s = true <-> for_all (fun k v => negb (f k v)) s = false).
+  Proof.
+    intros.
+    induction s as [|(k,v)].
+    - simpl. intuition.
+    - simpl. destruct (f k v); intuition.
+  Qed.
 
   Lemma  exists_spec : forall s f ,
     Proper (X.eq==>Logic.eq==>Logic.eq) f ->
     (exists_ f s = true <-> Exists (fun x a => f x a = true) s).
-  Admitted.
-
-  (*
-  Lemma exists_spec :
-   forall (s : t) (f : elt -> bool),
-   Proper (X.eq==>eq) f ->
-   (exists_ f s = true <-> Exists (fun x => f x = true) s).
   Proof.
-  unfold Exists; induction s; simpl.
-  split; [discriminate| intros (x & Hx & _); inv].
-  intros.
-  destruct (f a) eqn:F.
-  split; auto.
-  exists a; auto.
-  rewrite IHs; firstorder.
-  inv.
-  setoid_replace a with x in F; auto; congruence.
-  exists x; auto.
+    intros.
+    unfold For_all.
+    induction s as [|(k,v)].
+    - simpl. split; intro.
+      + inversion H0.
+      + unfold Exists in H0. inversion H0. inversion H1. inversion H2. inversion H3.
+    - simpl.
+      destruct (f k v) eqn:Hf.
+      + split.
+        * intros.
+          exists k. exists v.
+          split ; [constructor;  reflexivity | assumption].
+        * intro He. reflexivity.
+      + split.
+        * intros.
+          apply IHs in H0.
+          inversion H0. inversion_clear H1. inversion_clear H2.
+          exists x. exists x0.
+          split ; [constructor;  assumption | assumption].
+        * intro He.
+          inversion_clear He. inversion_clear H0. inversion_clear H1.
+          inversion H0; subst; clear H0.
+          rewrite H3 in H2. rewrite H2 in Hf. inversion Hf.
+          apply IHs.
+          exists x. exists x0.
+          split ; assumption.
   Qed.
-  *)
 
   Lemma partition_spec1 : forall s f,
     Proper (X.eq==>Logic.eq==>Logic.eq) f ->

@@ -227,8 +227,6 @@ Module Type WMapsOn (E : DecidableType).
       (* TODO: is this not elements_spec2w? *)
       Parameter unique: MapsTo k v m -> MapsTo k v' m -> v = v'.
 
-      Parameter MapsTo_spec : E.eq k k' -> MapsTo k v m -> MapsTo k' v m.
-
       Parameter find_spec : find k m = Some v <-> MapsTo k v m.
       Parameter mem_spec : mem k m = true <-> In k m.
       Section EqSpec.
@@ -485,6 +483,9 @@ Module Type WRawMaps (E : DecidableType).
       Variable f : key -> A -> bool.
       Notation compatb := (Proper (E.eq==>Logic.eq==>Logic.eq)) (only parsing).
 
+      Parameter unique: forall `{Ok A s}, MapsTo k v s -> MapsTo k v' s -> v = v'.
+
+      Parameter find_spec : forall `{Ok A s}, find k s = Some v <-> MapsTo k v s.
       Parameter mem_spec : forall `{Ok A s}, mem k s = true <-> In k s.
 
       Section EqSpec.
@@ -680,15 +681,10 @@ Module WRaw2MapsOn (E:DecidableType)(M:WRawMaps E) <: WMapsOn E.
      Variable cmp : A -> A -> bool.
      Notation compatb := (Proper (E.eq==>Logic.eq==>Logic.eq)) (only parsing).
 
-     Lemma MapsTo_spec : E.eq k k' -> MapsTo k v s -> MapsTo k' v s.
-     Admitted.
-
      Lemma unique: MapsTo k v s -> MapsTo k v' s -> v = v'.
-     Admitted.
-
+     Proof. exact (@M.unique _ _ _ _ _ _). Qed.
      Lemma find_spec : find k s = Some v <-> MapsTo k v s.
-     Admitted.
-
+     Proof. exact (@M.find_spec _ _ _ _ _). Qed.
      Lemma mem_spec : mem k s = true <-> In k s.
      Proof. exact (@M.mem_spec _ _ _ _). Qed.
      Lemma equal_spec1 : Equivb cmp s s' -> equal cmp s s' = true.

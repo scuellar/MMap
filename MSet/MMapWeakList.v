@@ -929,6 +929,7 @@ Module MakeRaw (X:DecidableType) <: WRawMaps X.
 
   Lemma mapi_spec2 : forall (elt elt':Type)(m: t elt)(x:key)
                             (f:key->elt->elt'), In x (mapi f m) -> In x m.
+  Proof.
     intros.
     remember (mapi f m) as m'.
     generalize dependent m.

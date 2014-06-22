@@ -270,6 +270,31 @@ Module MakeRaw (X:DecidableType) <: WRawMaps X.
   Proof. unfold In.  solve_proper. Qed.
   Hint Resolve In_compat.
 
+  Lemma unique: forall s k v v' `{Ok s}, MapsTo k v s -> MapsTo k v' s -> v = v'.
+  Proof.
+    intros.
+    induction H0; inversion H1; subst; clear H1;
+                  inversion H; subst; clear H.
+    - reflexivity.
+    - exfalso. apply H4. exists v'. rewrite <- H0. assumption.
+    - exfalso. apply H4. exists v. rewrite <- H3. assumption.
+    - apply IHMapsToA; assumption.
+  Qed. 
+
+  Lemma find_spec : forall s k v `{Ok s}, find k s = Some v <-> MapsTo k v s.
+  Proof.
+    intros. induction s as [|(k',v')].
+    - intuition; inversion H0.
+    - simpl. rewrite MapsTo_cons.
+      destruct (X.eq_dec k k').
+      + intuition.
+        * left. inversion H0. intuition.
+        * subst v. intuition.
+        * inversion H; subst; clear H.
+          exfalso. apply H3. exists v. rewrite <- e. assumption.
+      + rewrite IHs. intuition. inversion H. assumption.
+  Qed.
+
   Lemma mem_spec : forall s x `{Ok s}, mem x s = true <-> In x s.
   Proof.
     intros. split.
